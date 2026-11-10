@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>地図の読み取り</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#eef6fd;color:#1c2733;
+  font-family:"BIZ UDPGothic","Hiragino Kaku Gothic ProN","Noto Sans CJK JP",sans-serif;
+  touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+rt{font-size:.5em;font-weight:400}
+button{font-family:inherit;color:inherit;touch-action:manipulation;cursor:pointer}
+.screen{display:none;position:absolute;inset:0;flex-direction:column}
+.screen.on{display:flex}
+.scroll{overflow-y:auto;-webkit-overflow-scrolling:touch}
+
+/* スタート */
+#start{align-items:center;padding:16px}
+#start .inner{width:100%;max-width:760px;margin:auto;text-align:center}
+h1{font-size:clamp(28px,5vw,44px);margin:8px 0 6px;color:#1f5fa8;line-height:1.9}
+.lead{font-size:20px;margin:6px 0 14px;line-height:2}
+.genres{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:560px){.genres{grid-template-columns:repeat(2,1fr)}}
+.gbtn{min-height:92px;border:3px solid #2f7dd1;border-radius:16px;background:#fff;font-size:24px;font-weight:700;line-height:1.9;padding:6px}
+.gbtn small{display:block;font-size:14px;font-weight:400;color:#49627c;line-height:1.9}
+.gbtn:active{background:#dcecfb}
+.gbtn.any{border-color:#f08c00;background:#fff8e6}
+.startfoot{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:16px;font-size:18px}
+.gear{width:52px;height:52px;border-radius:50%;border:2px solid #7a8ea3;background:#fff;display:flex;align-items:center;justify-content:center;padding:0}
+.gear svg{width:30px;height:30px}
+
+/* プレイ */
+#bar{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:6px 10px;background:#2f7dd1;color:#fff}
+#bar .ttl{font-weight:700;font-size:18px;flex:1;line-height:1.6;padding-top:8px}
+#bar .prog{font-size:18px;font-weight:700}
+#bar button{min-width:76px;min-height:44px;border-radius:10px;border:2px solid #fff;background:transparent;color:#fff;font-size:16px;line-height:1.8}
+#main{flex:1;display:flex;min-height:0}
+#mapWrap{flex:1.7;min-width:0;min-height:0;padding:8px;display:flex}
+#mapWrap svg{width:100%;height:100%;background:#fff;border-radius:10px;border:2px solid #b9c9d9}
+#panel{flex:1;min-width:300px;padding:10px 12px 16px;background:#fff;border-left:2px solid #c8d8e8}
+@media (max-aspect-ratio:1/1){
+  #main{flex-direction:column}
+  #mapWrap{flex:0 0 54%}
+  #panel{border-left:none;border-top:2px solid #c8d8e8;min-width:0}
+}
+.qno{font-size:15px;color:#fff;background:#f08c00;display:inline-block;border-radius:8px;padding:0 12px;font-weight:700;line-height:1.9}
+.qtext{font-size:20px;line-height:2.25;margin:6px 0 10px;font-weight:700}
+.story{font-size:18px;line-height:2.3;background:#f3f8fd;border:2px solid #c8d8e8;border-radius:10px;padding:6px 10px;margin:0 0 10px;font-weight:400}
+.choices{display:grid;gap:9px}
+.choices.two{grid-template-columns:1fr 1fr}
+.cbtn{min-height:52px;border:2.5px solid #2f7dd1;border-radius:12px;background:#fff;font-size:19px;line-height:2;padding:2px 10px;text-align:left;display:flex;align-items:center;gap:8px}
+.cbtn.center{justify-content:center;text-align:center}
+.cbtn.sel{background:#2f7dd1;color:#fff}
+.cbtn.ok{background:#e3f6e6;border-color:#2b8a3e;color:#1c2733}
+.cbtn.ng{background:#f1f3f5;border-color:#adb5bd;color:#6b7785}
+.cbtn:disabled{cursor:default}
+.cbtn svg{flex:0 0 auto}
+.numrow{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0}
+.numrow input{width:96px;height:56px;font-size:28px;text-align:center;border:2.5px solid #2f7dd1;border-radius:10px;font-family:inherit;-webkit-user-select:text;user-select:text}
+.numrow .unit{font-size:22px;font-weight:700}
+.step{width:56px;height:56px;border-radius:12px;border:2.5px solid #2f7dd1;background:#fff;font-size:24px;padding:0}
+.go{display:block;width:100%;min-height:54px;margin-top:10px;border:none;border-radius:12px;background:#f08c00;color:#fff;font-size:21px;font-weight:700;line-height:1.9}
+.go:disabled{background:#cfd6dd}
+.cloze{font-size:18px;line-height:3.3;font-weight:400}
+.pair{display:inline-flex;gap:4px;vertical-align:middle;margin:0 3px}
+.pair button{min-width:56px;min-height:44px;border:2.5px solid #2f7dd1;border-radius:10px;background:#fff;font-size:17px;line-height:1.9;padding:0 8px}
+.pair button.sel{background:#2f7dd1;color:#fff}
+.pair button.ok{background:#e3f6e6;border-color:#2b8a3e;color:#1c2733}
+.pair button.ng{background:#f1f3f5;border-color:#adb5bd;color:#6b7785}
+.fb{margin-top:12px;border-radius:12px;padding:8px 12px;font-size:18px;line-height:2.2}
+.fb.ok{background:#e3f6e6;border:2.5px solid #2b8a3e}
+.fb.ng{background:#fff4dc;border:2.5px solid #f08c00}
+.fb .head{font-size:24px;font-weight:700}
+.fb .ans{font-weight:700}
+
+/* けっか */
+#result{align-items:center;padding:16px}
+#result .inner{width:100%;max-width:620px;margin:auto;text-align:center;background:#fff;border-radius:18px;border:2px solid #c8d8e8;padding:16px}
+.score{font-size:30px;font-weight:700;color:#1f5fa8;line-height:2}
+.rlist{list-style:none;padding:0;margin:8px 0 14px;font-size:19px;line-height:2.1;text-align:left;display:inline-block}
+.rlist b{display:inline-block;width:5.5em}
+.rbtns{display:grid;gap:10px}
+.rbtns button{min-height:56px;border-radius:12px;font-size:20px;font-weight:700;line-height:1.9}
+.b1{border:none;background:#f08c00;color:#fff}
+.b2{border:2.5px solid #2f7dd1;background:#fff}
+
+/* 設定 */
+#modal{display:none;position:fixed;inset:0;background:rgba(20,40,60,.45);align-items:center;justify-content:center;padding:14px;z-index:10}
+#modal.on{display:flex}
+.box{background:#fff;border-radius:16px;padding:16px 18px;width:100%;max-width:460px;font-size:18px}
+.box h2{margin:0 0 6px;font-size:22px;color:#1f5fa8}
+.row{margin:10px 0}
+.row .lab{font-weight:700;margin-bottom:4px}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;min-height:48px;border:2.5px solid #2f7dd1;border-radius:10px;background:#fff;font-size:18px}
+.seg button.sel{background:#2f7dd1;color:#fff}
+.hint{font-size:14px;color:#49627c;line-height:1.6;margin-top:4px}
+</style>
+</head>
+<body>
+
+<div id="start" class="screen on scroll"><div class="inner" id="startInner"></div></div>
+
+<div id="play" class="screen">
+  <div id="bar"><div class="ttl" id="barTtl"></div><div class="prog" id="prog"></div><button id="quit"></button></div>
+  <div id="main">
+    <div id="mapWrap"></div>
+    <div id="panel" class="scroll"></div>
+  </div>
+</div>
+
+<div id="result" class="screen scroll"><div class="inner" id="resultInner"></div></div>
+
+<div id="modal"><div class="box" id="modalBox"></div></div>
+
+<script>
+'use strict';
+/* ================= 共通 ================= */
+const $=s=>document.querySelector(s);
+const rnd=n=>Math.floor(Math.random()*n);
+const ri=(a,b)=>a+rnd(b-a+1);
+const pick=a=>a[rnd(a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;};
+const rb=s=>String(s).replace(/\{([^|}]+)\|([^}]+)\}/g,'<ruby>$1<rt>$2</rt></ruby>');
+const plain=s=>String(s).replace(/\{([^|}]+)\|([^}]+)\}/g,'$1');
+const cross=(v,w)=>v[0]*w[1]-v[1]*w[0];
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+function bearing(a,b){return (Math.atan2(b.x-a.x,-(b.y-a.y))*180/Math.PI+360)%360;}
+function angDiff(a,b){const d=Math.abs(a-b)%360;return d>180?360-d:d;}
+const DIR8=[['{北|きた}',0],['{北東|ほくとう}',45],['{東|ひがし}',90],['{南東|なんとう}',135],['{南|みなみ}',180],['{南西|なんせい}',225],['{西|にし}',270],['{北西|ほくせい}',315]];
+const R_={L:'{左|ひだり}',R:'{右|みぎ}'};
+const T={
+  bs:'バス{停|てい}', susumu:'{進|すす}む{向|む}き', gawa:'{側|がわ}', miete:'{見|み}て', houkou:'{方向|ほうこう}',
+  ichiban:'{一番|いちばん}', chikai:'{近|ちか}い', kousaten:'{交差点|こうさてん}', magaru:'{曲|ま}がる',
+  nan:'{何|なん}', kasho:'か{所|しょ}', ie:'{家|いえ}', eki:'{駅|えき}', yaku:'{約|やく}', chizu:'{地図|ちず}'
+};
+function compassOf(v){return v[1]<0?0:v[0]>0?2:v[1]>0?4:6;}
+
+/* ---- SVG 文字（ふりがなつき） ---- */
+function parseR(s){const out=[];const re=/\{([^|}]+)\|([^}]+)\}/g;let last=0,m;
+  while((m=re.exec(s))){if(m.index>last)out.push({b:s.slice(last,m.index)});out.push({b:m[1],r:m[2]});last=re.lastIndex;}
+  if(last<s.length)out.push({b:s.slice(last)});return out;}
+function tw(str,size){let w=0;for(const c of str)w+=(c.charCodeAt(0)<128?0.58:1);return w*size;}
+function textW(s,size){let W=0;for(const g of parseR(s))W+=Math.max(tw(g.b,size),g.r?tw(g.r,size*0.5)+1:0);return W;}
+function svgT(s,x,y,o){o=o||{};const size=o.size||15,rs=size*0.5,an=o.anchor||'start';const sg=parseR(s);let W=0;
+  sg.forEach(g=>{g.w=Math.max(tw(g.b,size),g.r?tw(g.r,rs)+1:0);W+=g.w;});
+  let cx=an==='middle'?x-W/2:an==='end'?x-W:x;let h='';
+  const halo=o.halo===false?'':' stroke="#fff" stroke-width="3.5" paint-order="stroke" stroke-linejoin="round"';
+  const fill=o.fill||'#111',fw=o.bold?' font-weight="700"':'';
+  for(const g of sg){const mx=(cx+g.w/2).toFixed(1);
+    h+='<text x="'+mx+'" y="'+y+'" font-size="'+size+'" text-anchor="middle" fill="'+fill+'"'+fw+halo+'>'+g.b+'</text>';
+    if(g.r)h+='<text x="'+mx+'" y="'+(y-size*0.98).toFixed(1)+'" font-size="'+rs+'" text-anchor="middle" fill="'+fill+'"'+halo+'>'+g.r+'</text>';
+    cx+=g.w;}
+  return h;}
+function arrowHead(x,y,v,s,fill){const n=Math.hypot(v[0],v[1])||1,ux=v[0]/n,uy=v[1]/n,px=-uy,py=ux;s=s||8;
+  return '<polygon points="'+(x+ux*s)+','+(y+uy*s)+' '+(x-ux*s*0.6+px*s*0.7)+','+(y-uy*s*0.6+py*s*0.7)+' '+(x-ux*s*0.6-px*s*0.7)+','+(y-uy*s*0.6-py*s*0.7)+'" fill="'+(fill||'#111')+'"/>';}
+function northMark(x,y){return '<g stroke="#111" stroke-width="2.5" fill="none" stroke-linejoin="round"><path d="M'+x+' '+(y+44)+' L'+x+' '+y+' L'+(x-12)+' '+(y+26)+' L'+(x+12)+' '+(y+26)+'"/></g><text x="'+x+'" y="'+(y-5)+'" font-size="13" text-anchor="middle" font-weight="700">N</text>';}
+function scaleBar(x,y){let h='<g stroke="#111" stroke-width="1.5"><line x1="'+x+'" y1="'+y+'" x2="'+(x+200)+'" y2="'+y+'"/>';
+  for(let k=0;k<=5;k++)h+='<line x1="'+(x+k*40)+'" y1="'+(y-7)+'" x2="'+(x+k*40)+'" y2="'+y+'"/>';
+  return h+'</g><text x="'+x+'" y="'+(y-12)+'" font-size="12" text-anchor="middle">0</text><text x="'+(x+200)+'" y="'+(y-12)+'" font-size="12" text-anchor="middle">500m</text>';}
+
+/* ---- 解説用の重ね描き ---- */
+const OV='#e8590c';
+const ovRing=(p,r)=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="'+(r||20)+'" fill="none" stroke="'+OV+'" stroke-width="4"/>';
+const ovLine=(a,b,dash)=>'<line x1="'+a.x+'" y1="'+a.y+'" x2="'+b.x+'" y2="'+b.y+'" stroke="'+OV+'" stroke-width="3"'+(dash?' stroke-dasharray="6 5"':'')+'/>';
+const ovText=(x,y,s,size)=>'<text x="'+x+'" y="'+y+'" font-size="'+(size||17)+'" font-weight="700" text-anchor="middle" fill="'+OV+'" stroke="#fff" stroke-width="4" paint-order="stroke">'+s+'</text>';
+const ovBadge=(x,y,s)=>'<circle cx="'+x+'" cy="'+y+'" r="13" fill="'+OV+'"/><text x="'+x+'" y="'+(y+6)+'" font-size="16" font-weight="700" text-anchor="middle" fill="#fff">'+s+'</text>';
+function ovPath(pts){let h='<polyline points="'+pts.map(p=>p.x+','+p.y).join(' ')+'" fill="none" stroke="'+OV+'" stroke-width="7" stroke-opacity=".55" stroke-linecap="round" stroke-linejoin="round"/>';
+  const a=pts[pts.length-2],b=pts[pts.length-1];return h+arrowHead(b.x,b.y,[b.x-a.x,b.y-a.y],13,OV);}
+function ovCompass(p,eight){let h='';const L=62;
+  DIR8.forEach((d,k)=>{if(!eight&&k%2)return;const a=d[1]*Math.PI/180,x=p.x+Math.sin(a)*L,y=p.y-Math.cos(a)*L;
+    h+=ovLine(p,{x:x,y:y},true)+ovText(p.x+Math.sin(a)*(L+16),p.y-Math.cos(a)*(L+16)+5,plain(d[0]),13);});
+  return h;}
+
+/* ================= 町の地図（共通モデル） ================= */
+const XS=[160,320,480,640],YS=[150,300,450],MW=800,MH=600,MPP=2.5;
+const QV=[[-1,-1],[1,-1],[-1,1],[1,1]];
+const FAC=[['{市役所|しやくしょ}','city'],['{図書館|としょかん}','lib'],['{病院|びょういん}','hosp'],['{警察署|けいさつしょ}','police'],
+ ['{消防署|しょうぼうしょ}','fire'],['{銀行|ぎんこう}','bank'],['{博物館|はくぶつかん}','museum'],['{体育館|たいいくかん}','gym'],
+ ['{保健所|ほけんじょ}','health'],['{美術館|びじゅつかん}','art'],['{公民館|こうみんかん}','hall'],['スーパー','super'],
+ ['{交番|こうばん}','koban'],['{神社|じんじゃ}','shrine'],['プール','pool'],['{本屋|ほんや}','book'],['{薬局|やっきょく}','pharm'],
+ ['{中学校|ちゅうがっこう}','jhs'],['{高校|こうこう}','hs'],['{動物園|どうぶつえん}','zoo'],['{郵便局|ゆうびんきょく}','post'],
+ ['{公園|こうえん}','park'],['{小学校|しょうがっこう}','es'],['{花屋|はなや}','flower'],['パン{屋|や}','bakery']];
+const MULTI=[['{郵便局|ゆうびんきょく}','post'],['{公園|こうえん}','park'],['{小学校|しょうがっこう}','es']];
+const PREF=['あおば','みどり','ひかり','さくら','わかば','いずみ','もみじ','つばめ','かえで','ひばり'];
+const AREA=['{山下|やました}','{川上|かわかみ}','{池田|いけだ}','{森本|もりもと}','{本町|ほんまち}','{中町|なかまち}','{大通|おおどお}り','{坂下|さかした}','{谷口|たにぐち}','{松原|まつばら}'];
+const STN=['あさがお','ひまわり','すみれ','こすもす','つつじ','もくれん','なのはな','たんぽぽ','あじさい'];
+const PEOPLE=['ゆうき','はるか','そうた','みさき','けんと','あやか'];
+
+function newTown(kind){return {kind:kind,fac:[],spot:new Set(),occ:new Set(),pool:shuffle(FAC),sym:false};}
+function spotPos(t,i,j,q){const dx=t.sym?27:22,dy=27;return {x:XS[i]+QV[q][0]*dx,y:YS[j]+QV[q][1]*dy};}
+function rowKey(i,j,q){return (i+(QV[q][0]>0?1:0))+','+(j+(QV[q][1]>0?1:0))+','+(QV[q][1]>0?'T':'B');}
+function canPlace(t,i,j,q){return !t.spot.has(i+','+j+','+q)&&(t.sym||!t.occ.has(rowKey(i,j,q)));}
+function reserve(t,i,j,q){t.spot.add(i+','+j+','+q);if(!t.sym)t.occ.add(rowKey(i,j,q));}
+function place(t,i,j,q,name,cat){if(!canPlace(t,i,j,q))return null;const p=spotPos(t,i,j,q);
+  const f={id:t.fac.length,name:name,cat:cat,i:i,j:j,q:q,x:p.x,y:p.y};t.fac.push(f);reserve(t,i,j,q);return f;}
+function freeSpots(t){const r=[];for(let i=0;i<4;i++)for(let j=0;j<3;j++)for(let q=0;q<4;q++)if(canPlace(t,i,j,q))r.push([i,j,q]);return shuffle(r);}
+function takeUnique(t,exclude){for(let k=0;k<t.pool.length;k++){if(exclude&&exclude.indexOf(t.pool[k][1])>=0)continue;return t.pool.splice(k,1)[0];}return null;}
+function placeUniqueAt(t,cands,exclude){for(const c of shuffle(cands)){if(canPlace(t,c[0],c[1],c[2])){const u=takeUnique(t,exclude);if(!u)return null;return place(t,c[0],c[1],c[2],u[0],u[1]);}}return null;}
+function fill(t,total,exclude){let guard=0;while(t.fac.length<total&&guard++<80){const fs=freeSpots(t);if(!fs.length)break;const u=takeUnique(t,exclude);if(!u)break;place(t,fs[0][0],fs[0][1],fs[0][2],u[0],u[1]);}}
+function facAt(t,i,j){return t.fac.filter(f=>f.i===i&&f.j===j);}
+const nodeXY=n=>({x:XS[n[0]],y:YS[n[1]]});
+
+/* ---- 方位の問題（どの地図でも使う） ---- */
+function qDir(anchors,targets,eight,overlayR){
+  const tolC=eight?13:22,tolD=eight?40:58;
+  for(const a of shuffle(anchors)){
+    for(let k of shuffle([0,1,2,3,4,5,6,7])){
+      if(!eight&&k%2)continue;
+      const cands=targets.filter(f=>f!==a&&f.name!==a.name&&dist(a,f)>=95);
+      const corr=cands.filter(f=>angDiff(bearing(a,f),DIR8[k][1])<=tolC);
+      const dis=cands.filter(f=>angDiff(bearing(a,f),DIR8[k][1])>=tolD);
+      if(corr.length&&dis.length>=3){
+        const c=pick(corr),ch=shuffle([c].concat(shuffle(dis).slice(0,3)));
+        return {type:'choice',text:a.name+'から'+T.miete+'、'+DIR8[k][0]+'の'+T.houkou+'にあるのは どれかな？',
+          choices:ch.map(f=>f.name),answer:ch.indexOf(c),
+          explain:T.chizu+'の{上|うえ}が{北|きた}だよ。'+a.name+'から'+DIR8[k][0]+'の'+T.houkou+'を{見|み}ると、'+c.name+'があるよ。',
+          overlay:ovCompass(a,eight)+ovRing(c,overlayR||18)};
+      }
+    }
+  }
+  return null;
+}
+
+/* ================= バス・あんない板 ================= */
+function genBus(level,board){
+  const t=newTown(board?'board':'bus');
+  const railTop=rnd(2)===0;t.rail={top:railTop,y:railTop?26:574};
+  const shapes=level===1?[[2,1],[2,2]]:level===2?[[3,1],[2,2],[3,2]]:[[2,2],[3,2],[3,2]];
+  const sh=pick(shapes),w=sh[0],h=sh[1];
+  const i0=rnd(4-w),i1=i0+w,j0=h===2?0:(railTop?0:1),j1=j0+h;
+  let nodes=[];
+  for(let i=i0;i<i1;i++)nodes.push([i,j0]);for(let j=j0;j<j1;j++)nodes.push([i1,j]);
+  for(let i=i1;i>i0;i--)nodes.push([i,j1]);for(let j=j1;j>j0;j--)nodes.push([i0,j]);
+  let N=nodes.length;const railJ=railTop?0:2;
+  if(level>=2&&w>=2&&h>=2&&rnd(2)){
+    const cs=[];
+    for(let k=0;k<N;k++){const P=nodes[(k+N-1)%N],C=nodes[k],Q=nodes[(k+1)%N];
+      if(P[0]!==Q[0]&&P[1]!==Q[1]){const D=[P[0]+Q[0]-C[0],P[1]+Q[1]-C[1]];
+        if(!nodes.some(n=>n[0]===D[0]&&n[1]===D[1]))cs.push([k,D]);}}
+    if(cs.length){const c=pick(cs);nodes[c[0]]=c[1];}
+  }
+  if(rnd(2))nodes.reverse();
+  const railEdges=[];for(let k=0;k<N;k++){const a=nodes[k],b=nodes[(k+1)%N];if(a[1]===railJ&&b[1]===railJ)railEdges.push(k);}
+  if(!railEdges.length)return null;
+  let nStops=level===1?4:level===2?ri(5,6):ri(6,7);nStops=Math.min(nStops,N);
+  if(nStops<4)return null;
+  const sk=pick(railEdges);
+  let ks=shuffle([...Array(N).keys()].filter(k=>k!==sk)).slice(0,nStops-1);ks.push(sk);
+  ks.sort((a,b)=>((a-sk+N)%N)-((b-sk+N)%N));
+  const stops=ks.map(k=>{const a=nodes[k],b=nodes[(k+1)%N];
+    return {k:k,a:a,b:b,horiz:a[1]===b[1],x:(XS[a[0]]+XS[b[0]])/2,y:(YS[a[1]]+YS[b[1]])/2};});
+  for(const s of stops){
+    let opts;
+    if(s.horiz){const i=Math.min(s.a[0],s.b[0]),j=s.a[1];opts=[['U',(i+1)+','+j+',B'],['D',(i+1)+','+(j+1)+',T']];}
+    else{const i=s.a[0],j=Math.min(s.a[1],s.b[1]);opts=[['L',i+','+(j+1)+',M'],['R',(i+1)+','+(j+1)+',M']];}
+    opts=shuffle(opts).filter(o=>!t.occ.has(o[1]));
+    if(s===stops[0]&&s.horiz){const pref=opts.filter(o=>o[0]===(railTop?'D':'U'));if(pref.length)opts=pref;}
+    if(!opts.length)return null;s.side=opts[0][0];t.occ.add(opts[0][1]);
+  }
+  const stn=pick(STN);t.station={name:stn+T.eki,x:stops[0].x,y:t.rail.y};stops[0].name=stn+'{駅前|えきまえ}';
+  const areas=shuffle(AREA);
+  for(let n=1;n<stops.length;n++){const s=stops[n];
+    const lo=s.horiz?(s.a[0]<s.b[0]?s.a:s.b):(s.a[1]<s.b[1]?s.a:s.b),hi=lo===s.a?s.b:s.a;
+    const adj=s.horiz?[[lo[0],lo[1],1],[lo[0],lo[1],3],[hi[0],hi[1],0],[hi[0],hi[1],2]]:[[lo[0],lo[1],2],[lo[0],lo[1],3],[hi[0],hi[1],0],[hi[0],hi[1],1]];
+    let f=null;if(board||Math.random()<0.8)f=placeUniqueAt(t,adj);
+    if(f){s.fac=f;s.name=/\}$/.test(f.name)?f.name.replace(/\{([^|}]+)\|([^}]+)\}$/,'{$1前|$2まえ}'):f.name+'{前|まえ}';}else s.name=areas.pop();
+  }
+  const withFac=stops.filter(s=>s.fac);
+  if(board&&withFac.length<3)return null;
+  // 時間
+  const total=pick(nStops<=5?[20,24,30]:[30,36,40]);const legs=stops.map(()=>2);let rest=total-2*nStops;
+  while(rest>0){legs[rnd(nStops)]++;rest--;}
+  let c=0;stops.forEach((s,n)=>{s.cum=c;c+=legs[n];});
+  t.loop={nodes:nodes,stops:stops,total:total};
+  if(board){
+    t.table=shuffle(withFac).slice(0,3).sort((a,b)=>a.cum-b.cum);
+    // 説明文の問題で使う施設
+    const inLoop=new Set(nodes.map(n=>n.join()));const cands=[];
+    for(const s of stops.slice(1)){for(const P of [s.a,s.b]){
+      const ds=s.horiz?[[0,-1],[0,1]]:[[-1,0],[1,0]];
+      for(const d of ds){const Q=[P[0]+d[0],P[1]+d[1]];
+        if(Q[0]<0||Q[0]>3||Q[1]<0||Q[1]>2||inLoop.has(Q.join()))continue;
+        for(let q=0;q<4;q++){const ax=d[0]!==0?0:1;if(QV[q][ax]*d[ax]<0&&canPlace(t,Q[0],Q[1],q))cands.push({s:s,P:P,d:d,Q:Q,q:q});}
+      }}}
+    let done=false;
+    for(const cd of shuffle(cands)){
+      const p=spotPos(t,cd.Q[0],cd.Q[1],cd.q);const dS=dist(p,cd.s);
+      const others=stops.slice(1).filter(s=>s!==cd.s).sort((a,b)=>dist(p,b)-dist(p,a));
+      if(!others.length||dist(p,others[0])<dS*1.6)continue;
+      const u=takeUnique(t);const f=place(t,cd.Q[0],cd.Q[1],cd.q,u[0],u[1]);
+      const O=cd.P===cd.s.a?cd.s.b:cd.s.a;const v1=[Math.sign(cd.P[0]-O[0]),Math.sign(cd.P[1]-O[1])];
+      const r50=x=>Math.max(50,Math.round(x/50)*50);
+      t.cloze={f:f,s:cd.s,other:others[0],dir1:compassOf(v1),turn:compassOf(cd.d),
+        d1:r50((cd.s.horiz?80:75)*MPP),d2:r50((cd.d[0]!==0?160-22:150-27)*MPP),side:cross(cd.d,QV[cd.q])>0?'R':'L',P:cd.P,d:cd.d};
+      done=true;break;
+    }
+    if(!done)return null;
+  }
+  fill(t,level===1?8:level===2?10:12);
+  if(t.fac.length<7)return null;
+  return t;
+}
+function stopPathNodes(t,X,Y){const L=t.loop,N=L.nodes.length,r=[];let k=X.k;while(true){k=(k+1)%N;r.push(L.nodes[k]);if(k===Y.k)break;}return r;}
+function qNearestStop(t){
+  const L=t.loop;const own=new Set(L.stops.filter(s=>s.fac).map(s=>s.fac.id));
+  for(const f of shuffle(t.fac)){if(own.has(f.id))continue;if(t.cloze&&t.cloze.f===f)continue;
+    const ss=L.stops.slice().sort((a,b)=>dist(f,a)-dist(f,b));
+    if(dist(f,ss[0])<=0.72*dist(f,ss[1])){
+      const ch=shuffle([ss[0],ss[1]].concat(shuffle(ss.slice(2)).slice(0,2)));
+      return {type:'choice',text:f.name+'に'+T.ichiban+T.chikai+T.bs+'は どれかな？',choices:ch.map(s=>s.name),answer:ch.indexOf(ss[0]),
+        explain:f.name+'の すぐ{近|ちか}くにあるのは、「'+ss[0].name+'」'+T.bs+'だよ。',
+        overlay:ovRing(f,18)+ovLine(f,ss[0])+ovRing(ss[0],22)};
+    }
+  }
+  return null;
+}
+function qAhead(t,level){
+  const st=t.loop.stops,n=st.length;
+  for(let tr=0;tr<40;tr++){
+    const xi=rnd(n),c=level===1?ri(1,Math.min(3,n-1)):ri(2,n-1);if(c*2===n)continue;
+    const X=st[xi],Y=st[(xi+c)%n];
+    let set=[c,n-c,c+1,c-1].filter((v,k,a)=>v>0&&a.indexOf(v)===k).slice(0,3);if(set.length<3)set.push(c+2);
+    set.sort((a,b)=>a-b);
+    let ov='';for(let m=1;m<=c;m++){const s=st[(xi+m)%n];ov+=ovBadge(s.x+(s.horiz?0:-22),s.y+(s.horiz?-22:0),m);}
+    return {type:'choice',center:true,text:'「'+X.name+'」'+T.bs+'から バスに{乗|の}るよ。「'+Y.name+'」'+T.bs+'は いくつ{先|さき}の'+T.bs+'かな？',
+      choices:set.map(v=>v+'つ'),answer:set.indexOf(c),
+      explain:'バスは{矢印|やじるし}の{向|む}きにだけ{進|すす}むよ。{矢印|やじるし}にそって かぞえると、'+c+'つ{先|さき}だよ。',overlay:ov};
+  }
+  return null;
+}
+function qLR(t){
+  const st=t.loop.stops,n=st.length,L=t.loop,N=L.nodes.length;
+  for(let tr=0;tr<60;tr++){
+    const xi=rnd(n),c=ri(1,Math.min(3,n-1));const X=st[xi],Y=st[(xi+c)%n];
+    const pn=stopPathNodes(t,X,Y);const halves=[];
+    const pre=L.nodes[X.k];halves.push({P:pn[0],d:[pre[0]-pn[0][0],pre[1]-pn[0][1]],v:[pn[0][0]-pre[0],pn[0][1]-pre[1]]});
+    for(let k=0;k+1<pn.length;k++){const u=pn[k],w=pn[k+1],v=[w[0]-u[0],w[1]-u[1]];halves.push({P:u,d:v,v:v});halves.push({P:w,d:[-v[0],-v[1]],v:v});}
+    const last=pn[pn.length-1],nx=L.nodes[(Y.k+1)%N],vv=[nx[0]-last[0],nx[1]-last[1]];halves.push({P:last,d:vv,v:vv});
+    const side={};
+    for(const hf of halves){const ax=hf.d[0]!==0?0:1;for(let q=0;q<4;q++){if(QV[q][ax]*hf.d[ax]>0){
+      const f=t.fac.find(f=>f.i===hf.P[0]&&f.j===hf.P[1]&&f.q===q);if(f)side[f.id]=cross(hf.v,QV[q])>0?'R':'L';}}}
+    const ask=pick(['L','R']);const corr=t.fac.filter(f=>side[f.id]===ask);if(!corr.length)continue;
+    const opp=t.fac.filter(f=>side[f.id]&&side[f.id]!==ask);
+    const pset=new Set(pn.map(p=>p.join()));const far=t.fac.filter(f=>!pset.has(f.i+','+f.j));
+    if(!opp.length||opp.length+far.length<3)continue;
+    const c0=pick(corr);const dis=shuffle(opp).slice(0,2);const d2=dis.concat(shuffle(far).slice(0,3-dis.length));
+    const ch=shuffle([c0].concat(d2));
+    const pts=[{x:X.x,y:X.y}].concat(pn.map(nodeXY)).concat([{x:Y.x,y:Y.y}]);
+    let ov=ovPath(pts)+ovRing(c0,18)+ovText(c0.x,c0.y-24,plain(R_[ask]),16);
+    dis.forEach(f=>{ov+=ovText(f.x,f.y-24,plain(R_[ask==='L'?'R':'L']),16);});
+    return {type:'choice',text:'「'+X.name+'」'+T.bs+'から「'+Y.name+'」'+T.bs+'まで バスで{行|い}くよ。'+T.susumu+'に{向|む}かって'+R_[ask]+T.gawa+'に{見|み}えるのは どれかな？',
+      choices:ch.map(f=>f.name),answer:ch.indexOf(c0),
+      explain:'バスが'+T.susumu+'に、{体|からだ}を{向|む}けて{考|かんが}えるよ。'+T.chizu+'を{回|まわ}して{見|み}ると わかりやすいよ。'+c0.name+'は'+R_[ask]+T.gawa+'に{見|み}えるよ。',
+      overlay:ov};
+  }
+  return null;
+}
+function qTime(t,level){
+  const L=t.loop,S0=L.stops[0],tb=t.table;
+  if(level===1){const s=pick(tb);
+    return {type:'number',unit:'分',text:'「'+S0.name+'」'+T.bs+'から「'+s.name+'」'+T.bs+'まで、バスで'+T.nan+'分かかるかな？',answer:s.cum,
+      explain:T.chizu+'の{下|した}の{表|ひょう}を{見|み}てね。「'+s.fac.name+'」のところに「バス'+s.cum+'分」と{書|か}いてあるよ。',overlay:ovRing(s,22)};}
+  if(level===2||rnd(2)){const s=pick(tb),a=L.total-s.cum;
+    return {type:'number',unit:'分',text:'「'+s.name+'」'+T.bs+'から バスに{乗|の}ると、「'+S0.name+'」'+T.bs+'まで'+T.nan+'分かかるかな？',answer:a,
+      explain:'バスは{矢印|やじるし}の{向|む}きにだけ{進|すす}むから、ぐるっと{回|まわ}って{行|い}くよ。1{周|しゅう}'+L.total+'分で、「'+S0.name+'」から「'+s.name+'」までが'+s.cum+'分。だから '+L.total+' − '+s.cum+' ＝ '+a+'分だよ。',
+      overlay:ovRing(s,22)+ovRing(S0,22)};}
+  const two=shuffle(tb).slice(0,2);const X=two[0],Y=two[1];
+  const a=Y.cum>X.cum?Y.cum-X.cum:L.total-X.cum+Y.cum;
+  const ex=Y.cum>X.cum?'「'+S0.name+'」から「'+Y.name+'」までが'+Y.cum+'分、「'+X.name+'」までが'+X.cum+'分。だから '+Y.cum+' − '+X.cum+' ＝ '+a+'分だよ。'
+    :'バスは{矢印|やじるし}の{向|む}きにだけ{進|すす}むよ。「'+X.name+'」から「'+S0.name+'」までは '+L.total+' − '+X.cum+' ＝ '+(L.total-X.cum)+'分。そこから「'+Y.name+'」までが'+Y.cum+'分。あわせて'+a+'分だよ。';
+  return {type:'number',unit:'分',text:'「'+X.name+'」'+T.bs+'から バスに{乗|の}ると、「'+Y.name+'」'+T.bs+'まで'+T.nan+'分かかるかな？',answer:a,explain:ex,overlay:ovRing(X,22)+ovRing(Y,22)};
+}
+function qCloze(t,level){
+  const c=t.cloze,S0=t.loop.stops[0];
+  const two=(a,b)=>{const first=rnd(2)===0;return {opts:first?[a,b]:[b,a],ans:first?0:1};};
+  const parts=[];const tx=s=>parts.push({t:s});const bl=(a,b,isBlank)=>{if(isBlank)parts.push(two(a,b));else parts.push({t:a});};
+  tx(t.station.name+'から'+c.f.name+'に{行|い}くには、「'+S0.name+'」'+T.bs+'から バスに{乗|の}るよ。');
+  bl('「'+c.s.name+'」','「'+c.other.name+'」',true);
+  tx(T.bs+'で バスを おりて、');
+  bl(DIR8[c.dir1][0],DIR8[(c.dir1+4)%8][0],level>=2);
+  tx('に'+T.yaku+c.d1+'m{進|すす}み、'+T.kousaten+'を'+DIR8[c.turn][0]+'に{曲|ま}がるよ。さらに'+DIR8[c.turn][0]+'に'+T.yaku);
+  bl(c.d2+'m',(c.d2+500)+'m',level>=3);
+  tx('{進|すす}むと、'+T.susumu+'に{向|む}かって');
+  bl(R_[c.side],R_[c.side==='L'?'R':'L'],true);
+  tx(T.gawa+'に'+c.f.name+'があるよ。');
+  const P=nodeXY(c.P);
+  return {type:'cloze',text:'{説明|せつめい}の{文|ぶん}が{正|ただ}しくなるように、それぞれ えらんでね。',parts:parts,
+    explain:'おりる'+T.bs+'から、{道|みち}を{指|ゆび}でなぞってみよう。{曲|ま}がったあとは、'+T.susumu+'に{体|からだ}を{向|む}けて{右|みぎ}と{左|ひだり}を{考|かんが}えるよ。きょりは、ものさし（0〜500m）とくらべてね。',
+    overlay:ovPath([{x:c.s.x,y:c.s.y},P,{x:c.d[0]!==0?c.f.x:P.x,y:c.d[1]!==0?c.f.y:P.y}])+ovRing(c.f,18)+ovRing(c.s,22)};
+}
+
+/* ================= 道じゅん ================= */
+const STYLES=[{n:'あ',dash:'11 6'},{n:'い',dash:'2 5'},{n:'う',dash:'13 4 2 4'}];
+function genRoute(level){
+  const t=newTown('route');let A,B,di,dj,g=0;
+  do{A=[rnd(4),rnd(3)];B=[rnd(4),rnd(3)];di=Math.abs(A[0]-B[0]);dj=Math.abs(A[1]-B[1]);}while(!(di>=1&&dj>=1&&(di>=2||dj>=2))&&g++<200);
+  const sx=Math.sign(B[0]-A[0]),sy=Math.sign(B[1]-A[1]);
+  const pH=[A,[B[0],A[1]],B],pV=[A,[A[0],B[1]],B];let pZ;
+  if(di>=2&&(dj<2||rnd(2))){const im=A[0]+sx*ri(1,di-1);pZ=[A,[im,A[1]],[im,B[1]],B];}
+  else{const jm=A[1]+sy;pZ=[A,[A[0],jm],[B[0],jm],B];}
+  const st=shuffle([0,1,2]);
+  t.routes=[pH,pV,pZ].map((p,k)=>({path:p,style:st[k]}));
+  t.target=level===1?rnd(2):level===2?rnd(3):2;
+  // 家
+  const hq=shuffle([0,1,2,3]).find(q=>canPlace(t,A[0],A[1],q));if(hq===undefined)return null;
+  reserve(t,A[0],A[1],hq);const hp=spotPos(t,A[0],A[1],hq);t.home={x:hp.x,y:hp.y,q:hq,name:T.ie};
+  // 目的地
+  const destPool=['lib','museum','gym','art','hall','pool','zoo'];
+  const dk=t.pool.findIndex(u=>destPool.indexOf(u[1])>=0);const du=t.pool.splice(dk,1)[0];
+  const dq=shuffle([0,1,2,3]).find(q=>canPlace(t,B[0],B[1],q));if(dq===undefined)return null;
+  t.dest=place(t,B[0],B[1],dq,du[0],du[1]);
+  // 目じるし
+  const turns=[pH[1],pV[1],pZ[1],pZ[2]];
+  for(const X of turns){if(!facAt(t,X[0],X[1]).length){if(!placeUniqueAt(t,[0,1,2,3].map(q=>[X[0],X[1],q]),['post','park','es']))return null;}}
+  // 数える施設
+  const prefs=shuffle(PREF);t.multi=[];
+  for(const m of MULTI){const n=ri(1,3);let cnt=0;for(let k=0;k<n;k++){const fs=freeSpots(t);if(!fs.length)break;place(t,fs[0][0],fs[0][1],fs[0][2],prefs.pop()+m[0],m[1]);cnt++;}
+    if(!cnt)return null;t.multi.push({name:m[0],cat:m[1],n:cnt});}
+  fill(t,level===1?11:level===2?13:15,['post','park','es']);
+  t.shelters=t.fac.filter(f=>['es','park','jhs','hs','gym'].indexOf(f.cat)>=0&&f!==t.dest);
+  if(t.shelters.length<3)return null;if(t.shelters.length>5)t.shelters=shuffle(t.shelters).slice(0,5);
+  t.person=pick(PEOPLE);
+  return t;
+}
+function qCount(t,level){
+  const ov=cat=>t.fac.filter(f=>f.cat===cat).map(f=>ovRing(f,16)).join('');
+  if(level===1){const m=pick(t.multi);const set=[1,2,3,4];
+    return {type:'choice',center:true,two:true,text:T.chizu+'の{中|なか}に、'+m.name+'は'+T.nan+T.kasho+'あるかな？',choices:set.map(v=>v+T.kasho),answer:set.indexOf(m.n),
+      explain:m.name+'に{印|しるし}をつけながら かぞえると、'+m.n+T.kasho+'だよ。',overlay:ov(m.cat)};}
+  const mk=ns=>t.multi.map((m,k)=>m.name+'が'+ns[k]+T.kasho).join('、')+'ある。';
+  const right=t.multi.map(m=>m.n);const seen=new Set([right.join()]);const wrong=[];let g=0;
+  while(wrong.length<2&&g++<100){const w=right.slice();const k=rnd(3);w[k]+=(w[k]===1||rnd(2))?1:-1;if(rnd(3)===0){const k2=(k+1)%3;w[k2]+=(w[k2]===1)?1:-1;}
+    if(!seen.has(w.join())){seen.add(w.join());wrong.push(w);}}
+  const ch=shuffle([right].concat(wrong));
+  return {type:'choice',text:T.chizu+'から{読|よ}み{取|と}れることとして、{正|ただ}しいのは どれかな？',choices:ch.map(mk),answer:ch.indexOf(right),
+    explain:'{同|おな}じ{名前|なまえ}がつくものに{印|しるし}をつけながら かぞえるよ。'+mk(right),overlay:t.multi.map(m=>ov(m.cat)).join('')};
+}
+function qShelter(t){
+  const ss=t.shelters.slice().sort((a,b)=>dist(t.home,a)-dist(t.home,b));
+  if(dist(t.home,ss[0])>0.78*dist(t.home,ss[1]))return null;
+  const ch=shuffle([ss[0],ss[1]].concat(shuffle(ss.slice(2)).slice(0,2)));
+  return {type:'choice',text:T.ie+'から'+T.ichiban+T.chikai+'「ひなん{場所|ばしょ}」は どれかな？',choices:ch.map(f=>f.name),answer:ch.indexOf(ss[0]),
+    explain:T.chizu+'の{下|した}に{書|か}いてある「ひなん{場所|ばしょ}」を、'+T.chizu+'の{中|なか}でさがすよ。'+T.ie+'から'+T.ichiban+T.chikai+'のは'+ss[0].name+'だよ。',
+    overlay:ch.map(f=>ovLine(t.home,f,f!==ss[0])).join('')+ovRing(ss[0],18)+ovRing(t.home,20)};
+}
+function qRoute(t){
+  const r=t.routes[t.target],p=r.path;let v=[Math.sign(p[1][0]-p[0][0]),Math.sign(p[1][1]-p[0][1])];
+  let s=t.person+'さんは、'+T.ie+'から{歩|ある}いて'+t.dest.name+'に{向|む}かったよ。まず、'+DIR8[compassOf(v)][0]+'の'+T.houkou+'に{歩|ある}いたよ。';
+  for(let k=1;k<p.length-1;k++){const X=p[k],w=[Math.sign(p[k+1][0]-X[0]),Math.sign(p[k+1][1]-X[1])];
+    const lm=pick(facAt(t,X[0],X[1]).filter(f=>f!==t.dest));if(!lm)return null;
+    s+=lm.name+'が'+R_[cross(v,QV[lm.q])>0?'R':'L']+'に{見|み}える'+T.kousaten+'を、'+R_[cross(v,w)>0?'R':'L']+'に{曲|ま}がったよ。';v=w;}
+  s+='そのまま まっすぐ{歩|ある}くと、'+t.dest.name+'に{着|つ}いたよ。';
+  const order=[0,1,2];const ans=order.indexOf(r.style);
+  return {type:'choice',story:s,text:t.person+'さんが{通|とお}った{道|みち}は どれかな？',
+    choices:order.map(k=>'<svg width="74" height="20" viewBox="0 0 74 20"><line x1="2" y1="10" x2="60" y2="10" stroke="#111" stroke-width="3" stroke-dasharray="'+STYLES[k].dash+'"'+(k===1?' stroke-linecap="round"':'')+'/><polygon points="72,10 60,4 60,16" fill="#111"/></svg>'+STYLES[k].n+'の{道|みち}'),
+    answer:ans,explain:T.ie+'から、{文|ぶん}のとおりに{道|みち}を{指|ゆび}でなぞってみよう。{曲|ま}がるときは、{歩|ある}いている{向|む}きに{体|からだ}を{向|む}けて{右|みぎ}と{左|ひだり}を{考|かんが}えるよ。{答|こた}えは「'+STYLES[r.style].n+'の{道|みち}」だよ。',
+    overlay:ovPath(p.map(nodeXY))};
+}
+
+/* ================= 電車（地図記号） ================= */
+const SYMS=[['{市役所|しやくしょ}','city'],['{保健所|ほけんじょ}','health'],['{消防署|しょうぼうしょ}','fire'],['{警察署|けいさつしょ}','police'],
+ ['{交番|こうばん}','koban'],['{病院|びょういん}','hosp'],['{図書館|としょかん}','lib'],['{博物館|はくぶつかん}','museum'],['{神社|じんじゃ}','shrine'],
+ ['{郵便局|ゆうびんきょく}','post'],['{学校|がっこう}','school']];
+function symSvg(cat,x,y){
+  const g='<g transform="translate('+x+','+y+')" stroke="#111" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">';
+  const bg='<circle r="13" fill="#fff" stroke="none"/>';let d='';
+  switch(cat){
+    case 'city':d='<circle r="9.5"/><circle r="5"/>';break;
+    case 'health':d='<circle r="9.5"/><path d="M-9.5 0H9.5M0 -9.5V9.5"/>';break;
+    case 'police':d='<circle r="9.5"/><path d="M-6.7 -6.7L6.7 6.7M6.7 -6.7L-6.7 6.7"/>';break;
+    case 'koban':d='<path d="M-8 -8L8 8M8 -8L-8 8"/>';break;
+    case 'fire':d='<path d="M-8 -9Q-8 -1 0 -1Q8 -1 8 -9M0 -1V10"/>';break;
+    case 'post':d='<circle r="10"/><path d="M-5.5 -5H5.5M-5.5 -1H5.5M0 -1V6.5"/>';break;
+    case 'hosp':d='<path d="M-9 -9H9V2Q9 9 0 11Q-9 9 -9 2Z"/><path d="M-5 -1H5M0 -6V4"/>';break;
+    case 'lib':d='<path d="M0 -6Q-5 -9 -10 -6V7Q-5 4 0 7Q5 4 10 7V-6Q5 -9 0 -6V7"/>';break;
+    case 'museum':d='<path d="M-10 -3L0 -10L10 -3Z"/><path d="M-7 -3V8M0 -3V8M7 -3V8M-10 9H10"/>';break;
+    case 'shrine':d='<path d="M-10 -8H10M-7 -3H7M-6 -8V10M6 -8V10"/>';break;
+    case 'school':return g+bg+'</g><text x="'+x+'" y="'+(y+7)+'" font-size="20" font-weight="700" text-anchor="middle">文</text>';
+  }
+  return g+bg+d+'</g>';
+}
+function genTrain(level){
+  const t=newTown('train');t.sym=true;
+  const east=rnd(2)===0;const jrX=east?722:78;
+  const iFar=east?rnd(2):3-rnd(2),iNear=east?3:0;const j0=0,j1=2;
+  const P={x:jrX,y:YS[j0]},Q={x:jrX,y:YS[j1]};
+  const c1={x:XS[iFar],y:YS[j0]},c2={x:XS[iFar],y:YS[j1]};
+  const names=shuffle(STN).slice(0,5).map(n=>n+T.eki);
+  // 駅（路面電車の辺のまん中）
+  const lo=Math.min(iFar,iNear),hi=Math.max(iFar,iNear);
+  const ia=ri(lo,hi-1),ib=ri(lo,hi-1),ja=rnd(2);
+  const s1={x:(XS[ia]+XS[ia+1])/2,y:YS[j0]},s2={x:XS[iFar],y:(YS[ja]+YS[ja+1])/2},s3={x:(XS[ib]+XS[ib+1])/2,y:YS[j1]};
+  const stations=[P,s1,s2,s3,Q];stations.forEach((s,k)=>{s.name=names[k];s.k=k;});
+  P.jr=true;Q.jr=true;
+  const tt=[ri(2,6),ri(2,6),ri(2,6),ri(2,6)];const jr=ri(3,7);
+  t.train={east:east,jrX:jrX,P:P,Q:Q,c1:c1,c2:c2,stations:stations,tt:tt,jr:jr,upIsP:rnd(2)===0,wait:level===1?0:ri(2,5)};
+  // 時間ラベルの位置
+  const poly=[P,s1,c1,s2,c2,s3,Q];
+  const segPts=[[P,s1],[s1,c1,s2],[s2,c2,s3],[s3,Q]];
+  t.train.labels=segPts.map(pts=>{let len=0;for(let k=0;k+1<pts.length;k++)len+=dist(pts[k],pts[k+1]);let h=len/2;
+    for(let k=0;k+1<pts.length;k++){const d=dist(pts[k],pts[k+1]);if(h<=d){const r=h/d;return {x:pts[k].x+(pts[k+1].x-pts[k].x)*r,y:pts[k].y+(pts[k+1].y-pts[k].y)*r};}h-=d;}return pts[0];});
+  t.train.poly=poly;
+  // 記号
+  const pool=shuffle(SYMS.filter(s=>s[1]!=='post'&&s[1]!=='school'));
+  const nU=level===1?5:level===2?6:7;
+  for(let k=0;k<nU;k++){const fs=freeSpots(t);place(t,fs[0][0],fs[0][1],fs[0][2],pool[k][0],pool[k][1]);}
+  t.multi=[];
+  for(const m of [SYMS[9],SYMS[10]]){const n=ri(1,3);for(let k=0;k<n;k++){const fs=freeSpots(t);place(t,fs[0][0],fs[0][1],fs[0][2],m[0],m[1]);}t.multi.push({name:m[0],cat:m[1],n:n});}
+  t.uniq=t.fac.filter(f=>f.cat!=='post'&&f.cat!=='school');
+  return t;
+}
+function qNearStation(t,level){
+  const st=t.train.stations;
+  for(const f of shuffle(t.uniq)){const ss=st.slice().sort((a,b)=>dist(f,a)-dist(f,b));
+    const d=ss.map(s=>dist(f,s));
+    if(level===1){if(d[0]>0.8*d[1])continue;}else{if(d[0]>0.85*d[1]||d[1]>0.82*d[2])continue;}
+    const tgt=level===1?ss[0]:ss[1];const ch=shuffle(ss.slice(0,4));
+    return {type:'choice',text:f.name+'から'+(level===1?T.ichiban:'2{番|ばん}めに')+T.chikai+T.eki+'は どれかな？',choices:ch.map(s=>s.name),answer:ch.indexOf(tgt),
+      explain:'まず、{記号|きごう}の{表|ひょう}で'+f.name+'の{記号|きごう}をたしかめてね。'+T.ichiban+T.chikai+'のは「'+ss[0].name+'」'+(level===1?'':'、2{番|ばん}めは「'+ss[1].name+'」')+'だよ。',
+      overlay:ovRing(f,18)+ovLine(f,ss[0])+(level===1?'':ovLine(f,ss[1]))+ovRing(tgt,26)};
+  }
+  return null;
+}
+function statementsTrain(t){
+  const S=[];
+  for(const a of t.uniq)for(const b of t.uniq){if(a===b||dist(a,b)<110)continue;const br=bearing(a,b);
+    DIR8.forEach((d,k)=>{if(angDiff(br,d[1])<=13){const mk=kk=>a.name+'から'+T.miete+DIR8[kk][0]+'の'+T.houkou+'に、'+b.name+'がある。';
+      S.push({key:a.id+'-'+b.id,tr:mk(k),fa:mk((k+pick([2,4,6]))%8),ov:ovRing(a,18)+ovRing(b,18)+ovLine(a,b)});}});}
+  for(const m of t.multi){const mk=n=>m.name+'は'+n+T.kasho+'ある。';
+    S.push({key:m.cat,tr:mk(m.n),fa:mk(m.n+(m.n===1||rnd(2)?1:-1)),ov:t.fac.filter(f=>f.cat===m.cat).map(f=>ovRing(f,16)).join('')});}
+  return S;
+}
+function qStatement(S,level,lead){
+  const used=new Set();const pickS=[];
+  for(const s of shuffle(S)){const ks=s.key.split('-');if(ks.some(k=>used.has(k)))continue;ks.forEach(k=>used.add(k));pickS.push(s);if(pickS.length===3)break;}
+  if(pickS.length<3)return null;
+  const neg=level===3;const odd=rnd(3);
+  const ch=pickS.map((s,k)=>(k===odd)!==neg?s.tr:s.fa);
+  return {type:'choice',text:lead+'から{読|よ}み{取|と}れることとして、'+(neg?'{正|ただ}しくないのは':'{正|ただ}しいのは')+' どれかな？',choices:ch,answer:odd,
+    explain:'ひとつずつ、'+T.chizu+'でたしかめるよ。'+(neg?'{正|ただ}しく{直|なお}すと「':'{正|ただ}しいのは「')+pickS[odd].tr+'」だよ。',overlay:pickS[odd].ov};
+}
+function qTrainCompare(t){
+  const tr=t.train,st=tr.stations,tt=tr.tt;
+  for(let g=0;g<40;g++){
+    const x=ri(1,3),toQ=rnd(2)===0;const X=st[x],G=toQ?tr.Q:tr.P,Via=toQ?tr.P:tr.Q;
+    const a=[],b=[];
+    if(toQ){for(let k=x;k<4;k++)a.push(tt[k]);for(let k=x-1;k>=0;k--)b.push(tt[k]);}
+    else{for(let k=x-1;k>=0;k--)a.push(tt[k]);for(let k=x;k<4;k++)b.push(tt[k]);}
+    const sa=a.reduce((p,c)=>p+c,0),sb=b.reduce((p,c)=>p+c,0)+tr.wait+tr.jr;if(sa===sb)continue;
+    const UP='{上|のぼ}り',DN='{下|くだ}り';
+    const dirDirect=(toQ!==tr.upIsP)?UP:DN,dirOther=dirDirect===UP?DN:UP; // 直通の向き
+    const best=sa<sb?dirDirect:dirOther;
+    const exA=a.join('＋')+(a.length>1?'＝'+sa:'')+'分';
+    const exB=b.join('＋')+(tr.wait?'＋{待|ま}ち'+tr.wait:'')+'＋'+tr.jr+'＝'+sb+'分';
+    return {type:'combo',opts:[UP,DN],sel:best===UP?0:1,answer:Math.min(sa,sb),unit:'分',
+      text:'「'+X.name+'」から{電車|でんしゃ}で「'+G.name+'」へ{行|い}くよ。'+UP+'と'+DN+'の どちらに{乗|の}ると、{早|はや}く{着|つ}くかな？ かかる{時間|じかん}も{答|こた}えてね。'
+        +(tr.wait?'<br>（「'+Via.name+'」で{乗|の}りかえるときは、{待|ま}ち{時間|じかん}が'+tr.wait+'分かかるよ。）':''),
+      ansText:best+'に{乗|の}って、'+Math.min(sa,sb)+'分',
+      explain:'○の{数字|すうじ}を、{通|とお}る{順|じゅん}に{足|た}すよ。'+dirDirect+'：'+exA+'。'+dirOther+'：'+exB+'。だから'+best+'のほうが{早|はや}くて、'+Math.min(sa,sb)+'分だよ。',
+      overlay:ovRing(X,28)+ovRing(G,28)};
+  }
+  return null;
+}
+
+/* ================= 公園 ================= */
+const ICONS=[['トイレ','toilet'],['{多機能|たきのう}トイレ','multi'],['{休憩所|きゅうけいじょ}','rest'],['{自動販売機|じどうはんばいき}','vend'],['{売店|ばいてん}','shop'],['{案内所|あんないじょ}','info']];
+const ICN={};ICONS.forEach(i=>ICN[i[1]]=i[0]);
+const ZONES=['どんぐり{広場|ひろば}','{花|はな}の{丘|おか}','アスレチック','バラ{園|えん}','しばふ{広場|ひろば}','{竹|たけ}の{林|はやし}','バーベキュー{場|じょう}','{展望台|てんぼうだい}','こども{広場|ひろば}','{梅|うめ}の{林|はやし}','ハーブ{園|えん}','{野鳥|やちょう}の{森|もり}'];
+const PONDS=['ひょうたん{池|いけ}','かめの{池|いけ}','ハスの{池|いけ}','{大池|おおいけ}','あひるの{池|いけ}'];
+const COMBOS=[['toilet'],['toilet','multi'],['rest','vend'],['rest'],['toilet','multi','rest'],['rest','vend','toilet'],['shop','toilet'],['info','toilet','multi'],['shop','rest'],['vend']];
+function iconSvg(k,x,y){
+  let d='';
+  switch(k){
+    case 'toilet':d='<circle cx="7" cy="5.5" r="2.3"/><rect x="5" y="9" width="4" height="9.5"/><circle cx="15.5" cy="5.5" r="2.3"/><path d="M15.5 8.5L11.8 16H14V18.5H17V16H19.2Z"/>';break;
+    case 'multi':d='<circle cx="9" cy="4.8" r="2.2"/><path d="M9 8V13H14.5L17 18.5" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 11.5A5 5 0 1 0 14 16.5" fill="none" stroke="#111" stroke-width="1.8"/>';break;
+    case 'rest':d='<path d="M3.5 8.5H18.5M3.5 13H18.5M6 13V18.5M16 13V18.5M6 8.5V13M16 8.5V13" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>';break;
+    case 'vend':d='<rect x="5.5" y="3" width="11" height="16" rx="1"/><rect x="7.5" y="5" width="7" height="6" fill="#fff"/><rect x="7.5" y="13.5" width="3.5" height="2.5" fill="#fff"/>';break;
+    case 'shop':d='<path d="M6 7.5H16L15 18.5H7Z"/><path d="M12.5 7.5L14.5 2.5" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round"/>';break;
+    case 'info':d='<circle cx="11" cy="5.5" r="2.2"/><rect x="9.4" y="9.2" width="3.2" height="9.3"/>';break;
+  }
+  return '<g transform="translate('+(x-11)+','+(y-11)+')"><rect width="22" height="22" fill="#fff" stroke="#111" stroke-width="1.5"/><g fill="#111">'+d+'</g></g>';
+}
+function genPark(level){
+  const a=level===1?2:level===2?ri(2,3):ri(3,4),b=level===1?3:level===2?ri(3,4):ri(4,5);
+  const N=a+b,cx=400,cy=292,th0=rnd(8)*45;const nodes=[];
+  for(let k=0;k<N;k++){const th=(th0+360*k/N+(k?(Math.random()-0.5)*0.3*360/N:0))*Math.PI/180,r=0.94+Math.random()*0.1;
+    nodes.push({x:Math.round(cx+212*r*Math.sin(th)),y:Math.round(cy-156*r*Math.cos(th))});}
+  let tA,tB,g=0;do{tA=[];tB=[];for(let k=0;k<a;k++)tA.push(ri(3,12));for(let k=0;k<b;k++)tB.push(ri(3,12));}
+  while((Math.abs(tA.reduce((p,c)=>p+c,0)-tB.reduce((p,c)=>p+c,0))<1||Math.abs(tA.reduce((p,c)=>p+c,0)-tB.reduce((p,c)=>p+c,0))>15)&&g++<100);
+  const p={kind:'park',nodes:nodes,a:a,b:b,tA:tA,tB:tB,cx:cx,cy:cy};
+  p.star={x:nodes[0].x,y:nodes[0].y,name:'★'};p.goal=nodes[a];
+  // 池
+  const pn=shuffle(PONDS);p.zones=[];
+  if(rnd(2)){p.zones.push({name:pn[0],x:cx-68,y:cy+ri(-10,10),rx:54,ry:42,pond:true});p.zones.push({name:pn[1],x:cx+68,y:cy+ri(-10,10),rx:54,ry:42,pond:true});}
+  else p.zones.push({name:pn[0],x:cx,y:cy,rx:92,ry:52,pond:true});
+  // まわりのエリア
+  const slots=shuffle([[400,50,62,26],[400,534,62,26],[728,292,56,28],[72,292,56,28],[650,82,62,28],[650,502,62,28],[150,502,62,28],[150,82,62,28]]);
+  const zn=shuffle(ZONES);const nz=level===1?4:level===2?5:6;
+  for(let k=0;k<nz;k++){const s=slots[k];p.zones.push({name:zn[k],x:s[0],y:s[1],rx:s[2],ry:s[3]});}
+  // 設備
+  const av=shuffle([...Array(N).keys()].filter(k=>k!==0&&k!==a));const nc=Math.min(av.length,level===1?3:level===2?4:5);
+  const cb=shuffle(COMBOS);p.clusters=[];
+  for(let k=0;k<nc;k++){const n=nodes[av[k]],d=Math.hypot(cx-n.x,cy-n.y);
+    p.clusters.push({x:Math.round(n.x+(cx-n.x)/d*44),y:Math.round(n.y+(cy-n.y)/d*40),icons:cb[k]});}
+  p.count=k=>p.clusters.filter(c=>c.icons.indexOf(k)>=0).length;
+  if(p.count('toilet')<2||p.count('rest')<1)return null;
+  return p;
+}
+function qParkDir(p,level){
+  const eight=level>=2;const zs=p.zones;
+  return qDir([p.star],zs,eight,34)||qDir(zs.filter(z=>!z.pond),zs,eight,34);
+}
+function qParkCount(p){
+  const ks=shuffle(['toilet','rest','multi','vend']).filter(k=>p.count(k)>=1);const k=ks.sort((x,y)=>p.count(y)-p.count(x))[rnd(Math.min(2,ks.length))];
+  return {type:'number',unit:T.kasho,text:'この{公園|こうえん}に、'+ICN[k]+'は'+T.nan+T.kasho+'あるかな？',answer:p.count(k),
+    explain:T.chizu+'の{下|した}で'+ICN[k]+'のマークをたしかめて、{印|しるし}をつけながら かぞえるよ。'+p.count(k)+T.kasho+'だよ。',
+    overlay:p.clusters.filter(c=>c.icons.indexOf(k)>=0).map(c=>ovRing(c,c.icons.length*12+8)).join('')};
+}
+function qParkStatement(p){
+  const S=[];
+  ['toilet','rest','multi','vend','shop'].forEach(k=>{const n=p.count(k);if(n<1)return;const mk=v=>ICN[k]+'は'+v+T.kasho+'ある。';
+    S.push({tr:mk(n),fa:mk(n+(n===1||rnd(2)?1:-1)),ov:p.clusters.filter(c=>c.icons.indexOf(k)>=0).map(c=>ovRing(c,c.icons.length*12+8)).join('')});});
+  // いちばん近い〜には…がある
+  let near=null;
+  for(const z of shuffle(p.zones)){for(const pair of shuffle([['rest','vend'],['toilet','multi'],['rest','toilet']])){
+    const cs=p.clusters.filter(c=>c.icons.indexOf(pair[0])>=0).sort((x,y)=>dist(z,x)-dist(z,y));
+    if(cs.length>=2&&dist(z,cs[0])<=0.75*dist(z,cs[1])){const has=cs[0].icons.indexOf(pair[1])>=0;
+      const mk=y=>z.name+'に'+T.ichiban+T.chikai+ICN[pair[0]]+'の{場所|ばしょ}には、'+ICN[pair[1]]+(y?'もある。':'はない。');
+      near={tr:mk(has),fa:mk(!has),ov:ovRing(z,40)+ovLine(z,cs[0])+ovRing(cs[0],cs[0].icons.length*12+8)};break;}}
+    if(near)break;}
+  let three=shuffle(S).slice(0,near?2:3);if(near)three.push(near);if(three.length<3)return null;three=shuffle(three);
+  const odd=rnd(3);const ch=three.map((s,k)=>k===odd?s.tr:s.fa);
+  return {type:'choice',text:T.chizu+'から{読|よ}み{取|と}れることとして、{正|ただ}しいのは どれかな？',choices:ch,answer:odd,
+    explain:'ひとつずつ、'+T.chizu+'でたしかめるよ。{正|ただ}しいのは「'+three[odd].tr+'」だよ。',overlay:three[odd].ov};
+}
+function qParkSum(p){
+  const useA=rnd(2)===0,ts=useA?p.tA:p.tB,s=ts.reduce((x,y)=>x+y,0);
+  return {type:'number',unit:'分',text:(useA?'A':'B')+'コースで、★から「あ」まで{歩|ある}くと、'+T.nan+'分かかるかな？',answer:s,
+    explain:(useA?'□':'○')+'の{中|なか}の{数字|すうじ}を、★から「あ」まで{順|じゅん}に{足|た}すよ。'+ts.join('＋')+'＝'+s+'分だよ。',overlay:ovRing(p.star,22)+ovRing(p.goal,22)};
+}
+function qParkCompare(p,level){
+  const sa=p.tA.reduce((x,y)=>x+y,0),sb=p.tB.reduce((x,y)=>x+y,0);const best=sa<sb?0:1;
+  const ex='Aコース：'+p.tA.join('＋')+'＝'+sa+'分。Bコース：'+p.tB.join('＋')+'＝'+sb+'分。';
+  if(level===1)return {type:'choice',center:true,two:true,text:'★から「あ」まで{歩|ある}くよ。AコースとBコースの どちらが{早|はや}く{着|つ}くかな？',choices:['Aコース','Bコース'],answer:best,
+    explain:'□と○の{数字|すうじ}を、それぞれ{足|た}して くらべるよ。'+ex,overlay:ovRing(p.star,22)+ovRing(p.goal,22)};
+  return {type:'combo',opts:['Aコース','Bコース'],sel:best,answer:Math.abs(sa-sb),unit:'分',
+    text:'★から「あ」まで{歩|ある}くよ。AコースとBコースの どちらが{早|はや}く{着|つ}くかな？ {時間|じかん}のちがいも{答|こた}えてね。',
+    numLabel:'ちがいは',ansText:(best?'B':'A')+'コースが{早|はや}くて、ちがいは'+Math.abs(sa-sb)+'分',
+    explain:'□と○の{数字|すうじ}を、それぞれ{足|た}して くらべるよ。'+ex+'ちがいは '+Math.max(sa,sb)+' − '+Math.min(sa,sb)+' ＝ '+Math.abs(sa-sb)+'分だよ。',
+    overlay:ovRing(p.star,22)+ovRing(p.goal,22)};
+}
+
+/* ================= 地図を描く ================= */
+function busIcon(x,y){return '<g transform="translate('+(x-13)+','+(y-13)+')"><rect width="26" height="26" rx="5" fill="#fff" stroke="#111" stroke-width="2"/><rect x="6" y="5" width="14" height="14" rx="2.5" fill="#111"/><rect x="8" y="7.5" width="10" height="5" fill="#fff"/><circle cx="9.5" cy="16" r="1.3" fill="#fff"/><circle cx="16.5" cy="16" r="1.3" fill="#fff"/><rect x="7.5" y="19" width="3" height="2.5" fill="#111"/><rect x="15.5" y="19" width="3" height="2.5" fill="#111"/></g>';}
+function railLine(x1,y1,x2,y2){return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#111" stroke-width="8"/><line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#fff" stroke-width="4.5" stroke-dasharray="15 15"/>';}
+function stationBox(s,x,y,bold){const w=textW(s,14)+16;return '<rect x="'+(x-w/2)+'" y="'+(y-18)+'" width="'+w+'" height="35" rx="3" fill="#fff" stroke="#111" stroke-width="2"/>'+svgT(s,x,y+11,{size:14,anchor:'middle',bold:true,halo:false});}
+function houseIcon(x,y){return '<g transform="translate('+x+','+y+')"><path d="M-15 -1L0 -15L15 -1" fill="none" stroke="#111" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><rect x="-11" y="-2" width="22" height="15" fill="#fff" stroke="#111" stroke-width="2.5"/><rect x="-4" y="3" width="8" height="10" fill="#111"/></g>';}
+function renderTown(t){
+  let h='<rect x="0" y="0" width="'+MW+'" height="'+MH+'" fill="#fff"/>';
+  const road='#cfd4da';
+  XS.forEach(x=>{h+='<rect x="'+(x-8)+'" y="0" width="16" height="'+MH+'" fill="'+road+'"/>';});
+  YS.forEach(y=>{h+='<rect x="0" y="'+(y-8)+'" width="'+MW+'" height="16" fill="'+road+'"/>';});
+  let lg='',LH=90;const y0=MH;
+  if(t.rail){h+=railLine(0,t.rail.y,MW,t.rail.y);}
+  if(t.kind==='train'){
+    const tr=t.train;h+=railLine(tr.jrX,0,tr.jrX,MH);
+    // 路面電車の道（JRまでのびる道）
+    const pts=tr.poly.map(p=>p.x+','+p.y).join(' ');
+    h+='<polyline points="'+pts+'" fill="none" stroke="#111" stroke-width="7" stroke-linejoin="round"/><polyline points="'+pts+'" fill="none" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>';
+    tr.labels.forEach((p,k)=>{h+='<circle cx="'+p.x+'" cy="'+p.y+'" r="13" fill="#fff" stroke="#111" stroke-width="2"/><text x="'+p.x+'" y="'+(p.y+5.5)+'" font-size="15" font-weight="700" text-anchor="middle">'+tr.tt[k]+'</text>';});
+    const jm={x:tr.jrX,y:(tr.P.y+tr.Q.y)/2};
+    h+='<circle cx="'+jm.x+'" cy="'+jm.y+'" r="13" fill="#fff" stroke="#111" stroke-width="2"/><text x="'+jm.x+'" y="'+(jm.y+5.5)+'" font-size="15" font-weight="700" text-anchor="middle">'+tr.jr+'</text>';
+    tr.stations.forEach(s=>{h+=stationBox(s.name,s.x,s.y);});
+    // 上り・下りの矢印
+    const s1=tr.stations[1],toP=tr.east?1:-1;
+    const lab=(txt,dir,yy)=>{const x1=s1.x-dir*30,x2=s1.x+dir*30;return '<line x1="'+x1+'" y1="'+yy+'" x2="'+x2+'" y2="'+yy+'" stroke="#111" stroke-width="3"/>'+arrowHead(x2,yy,[dir,0],8)+svgT(txt,s1.x,yy-7,{size:14,anchor:'middle',bold:true});};
+    h+=lab(tr.upIsP?'{上|のぼ}り':'{下|くだ}り',toP,s1.y-26)+lab(tr.upIsP?'{下|くだ}り':'{上|のぼ}り',-toP,s1.y+52);
+  }
+  if(t.loop){
+    const L=t.loop,N=L.nodes.length;const pts=L.nodes.map(n=>XS[n[0]]+','+YS[n[1]]).join(' ');
+    h+='<polygon points="'+pts+'" fill="none" stroke="#111" stroke-width="4.5" stroke-dasharray="1 8" stroke-linecap="round" stroke-linejoin="round"/>';
+    const stopK=new Set(L.stops.map(s=>s.k));
+    for(let k=0;k<N;k++){const a=nodeXY(L.nodes[k]),b=nodeXY(L.nodes[(k+1)%N]),r=stopK.has(k)?0.84:0.55;
+      h+=arrowHead(a.x+(b.x-a.x)*r,a.y+(b.y-a.y)*r,[b.x-a.x,b.y-a.y],9);}
+    h+=stationBox(t.station.name,t.station.x,t.station.y);
+    L.stops.forEach(s=>{h+=busIcon(s.x,s.y);
+      if(s.side==='U')h+=svgT(s.name,s.x,s.y-19,{size:15,anchor:'middle',bold:true});
+      else if(s.side==='D')h+=svgT(s.name,s.x,s.y+45,{size:15,anchor:'middle',bold:true});
+      else if(s.side==='L')h+=svgT(s.name,s.x-18,s.y+5,{size:15,anchor:'end',bold:true});
+      else h+=svgT(s.name,s.x+18,s.y+5,{size:15,anchor:'start',bold:true});});
+  }
+  if(t.routes){
+    t.routes.forEach(r=>{const o=(r.style-1)*5;const pts=r.path.map(n=>({x:XS[n[0]]+o,y:YS[n[1]]+o}));
+      h+='<polyline points="'+pts.map(p=>p.x+','+p.y).join(' ')+'" fill="none" stroke="#111" stroke-width="2.8" stroke-dasharray="'+STYLES[r.style].dash+'"'+(r.style===1?' stroke-linecap="round"':'')+'/>';
+      const a=pts[pts.length-2],b=pts[pts.length-1];h+=arrowHead(b.x,b.y,[b.x-a.x,b.y-a.y],8);
+});
+    h+=houseIcon(t.home.x+QV[t.home.q][0]*6,t.home.y+QV[t.home.q][1]*2);
+  }
+  // 施設
+  t.fac.forEach(f=>{
+    if(t.sym){h+=symSvg(f.cat,f.x,f.y);return;}
+    h+='<circle cx="'+f.x+'" cy="'+f.y+'" r="5" fill="#111"/>';
+    h+=QV[f.q][0]<0?svgT(f.name,f.x-9,f.y+6,{size:16,anchor:'end'}):svgT(f.name,f.x+9,f.y+6,{size:16,anchor:'start'});});
+  h+=northMark(34,34)+'<rect x="1" y="1" width="'+(MW-2)+'" height="'+(MH-2)+'" fill="none" stroke="#111" stroke-width="2"/>';
+  // はんれい
+  lg+=scaleBar(30,y0+44);
+  if(t.loop){
+    lg+='<line x1="270" y1="'+(y0+36)+'" x2="322" y2="'+(y0+36)+'" stroke="#111" stroke-width="4.5" stroke-dasharray="1 8" stroke-linecap="round"/>'+arrowHead(330,y0+36,[1,0],9);
+    lg+=svgT('バスが{通|とお}る{道|みち}と'+T.susumu+(t.kind==='board'?'（1{周|しゅう}'+t.loop.total+'分）':''),346,y0+41,{size:14,halo:false});
+    lg+=busIcon(283,y0+72)+svgT(T.bs,304,y0+77,{size:14,halo:false});
+    lg+=railLine(400,y0+72,460,y0+72)+svgT('{鉄道|てつどう}',470,y0+77,{size:14,halo:false});
+    LH=96;
+    if(t.kind==='board'){
+      const S0=t.loop.stops[0];let y=y0+118;
+      lg+=svgT('まわりの{施設|しせつ}',30,y,{size:15,bold:true,halo:false});
+      const bh=t.table.length*54+10;lg+='<rect x="24" y="'+(y+10)+'" width="752" height="'+bh+'" fill="none" stroke="#111" stroke-width="1.5"/>';
+      t.table.forEach((s,k)=>{const yy=y+40+k*54;
+        lg+='<circle cx="44" cy="'+(yy-5)+'" r="5" fill="#111"/>'+svgT(s.fac.name,54,yy,{size:15,bold:true,halo:false});
+        lg+=svgT('「'+S0.name+'」〜「'+s.name+'」',228,yy,{size:14,halo:false})+svgT('バス'+s.cum+'分',660,yy,{size:15,bold:true,halo:false});
+        const d=Math.max(50,Math.round(dist(s,s.fac)*MPP/50)*50);
+        lg+=svgT('「'+s.name+'」'+T.bs+'から'+T.yaku+d+'m',228,yy+25,{size:14,halo:false});});
+      LH=118+bh+24;
+    }
+  }
+  if(t.kind==='route'){
+    STYLES.forEach((s,k)=>{const x=270+k*120,y=y0+36;lg+='<text x="'+x+'" y="'+(y+5)+'" font-size="15" font-weight="700">'+s.n+'</text><line x1="'+(x+22)+'" y1="'+y+'" x2="'+(x+78)+'" y2="'+y+'" stroke="#111" stroke-width="2.8" stroke-dasharray="'+s.dash+'"'+(k===1?' stroke-linecap="round"':'')+'/>'+arrowHead(x+86,y,[1,0],8);});
+    lg+=houseIcon(280,y0+72)+svgT('：'+t.person+'さんの'+T.ie,300,y0+79,{size:14,halo:false});
+    lg+=svgT('あ・い・う：'+T.ie+'から'+t.dest.name+'までの{道|みち}',470,y0+79,{size:14,halo:false});
+    lg+=svgT('ひなん{場所|ばしょ}',30,y0+118,{size:15,bold:true,halo:false});
+    let x=130;t.shelters.forEach(f=>{lg+='<circle cx="'+x+'" cy="'+(y0+113)+'" r="5" fill="#111"/>'+svgT(f.name,x+9,y0+118,{size:14,halo:false});x+=textW(f.name,14)+30;});
+    LH=134;
+  }
+  if(t.kind==='train'){
+    lg+='<circle cx="282" cy="'+(y0+36)+'" r="12" fill="#fff" stroke="#111" stroke-width="2"/>'+svgT('の{数字|すうじ}：{駅|えき}から{次|つぎ}の{駅|えき}までの{時間|じかん}（分）',300,y0+41,{size:14,halo:false});
+    lg+=railLine(270,y0+72,330,y0+72)+svgT('JR{線|せん}',340,y0+77,{size:14,halo:false});
+    lg+='<line x1="430" y1="'+(y0+72)+'" x2="490" y2="'+(y0+72)+'" stroke="#111" stroke-width="7"/><line x1="430" y1="'+(y0+72)+'" x2="490" y2="'+(y0+72)+'" stroke="#fff" stroke-width="2.5"/>'+svgT('{路面電車|ろめんでんしゃ}',500,y0+77,{size:14,halo:false});
+    lg+=svgT('{地図|ちず}の{記号|きごう}',30,y0+112,{size:15,bold:true,halo:false});
+    SYMS.forEach((s,k)=>{const x=40+(k%6)*128,y=y0+140+Math.floor(k/6)*38;lg+=symSvg(s[1],x,y)+svgT(s[0],x+19,y+5,{size:14,halo:false});});
+    LH=200;
+  }
+  return {inner:h+lg,W:MW,H:MH+LH};
+}
+function renderPark(p){
+  const PH=584;let h='<rect x="14" y="10" width="772" height="'+(PH-20)+'" rx="110" fill="#fff" stroke="#111" stroke-width="3"/>';
+  h+='<defs><pattern id="dots" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#9aa3ad"/></pattern></defs>';
+  const ring=p.nodes.map(n=>n.x+','+n.y).join(' ');
+  h+='<polygon points="'+ring+'" fill="none" stroke="#c3c9d0" stroke-width="15" stroke-linejoin="round"/>';
+  p.zones.forEach(z=>{h+='<ellipse cx="'+z.x+'" cy="'+z.y+'" rx="'+z.rx+'" ry="'+z.ry+'" fill="url(#dots)" stroke="'+(z.pond?'#111':'#8b949e')+'" stroke-width="'+(z.pond?1.5:1)+'"/>'+svgT(z.name,z.x,z.y+6,{size:14,anchor:'middle'});});
+  const N=p.nodes.length;
+  const seg=(u,w,time,isA)=>{let s='<line x1="'+u.x+'" y1="'+u.y+'" x2="'+w.x+'" y2="'+w.y+'" stroke="#111" stroke-width="2.8"'+(isA?'':' stroke-dasharray="8 6"')+'/>';
+    s+=arrowHead(u.x+(w.x-u.x)*0.72,u.y+(w.y-u.y)*0.72,[w.x-u.x,w.y-u.y],9);
+    const mx=(u.x+w.x)/2,my=(u.y+w.y)/2,d=Math.hypot(mx-p.cx,my-p.cy)||1,lx=mx+(mx-p.cx)/d*25,ly=my+(my-p.cy)/d*25;
+    s+=isA?'<rect x="'+(lx-12)+'" y="'+(ly-12)+'" width="24" height="24" fill="#fff" stroke="#111" stroke-width="2"/>':'<circle cx="'+lx+'" cy="'+ly+'" r="13" fill="#fff" stroke="#111" stroke-width="2"/>';
+    return s+'<text x="'+lx+'" y="'+(ly+5.5)+'" font-size="15" font-weight="700" text-anchor="middle">'+time+'</text>';};
+  for(let k=0;k<p.a;k++)h+=seg(p.nodes[k],p.nodes[k+1],p.tA[k],true);
+  for(let m=0;m<p.b;m++)h+=seg(p.nodes[(N-m)%N],p.nodes[N-m-1],p.tB[m],false);
+  p.clusters.forEach(c=>{const n=c.icons.length;c.icons.forEach((k,i)=>{h+=iconSvg(k,c.x+(i-(n-1)/2)*23,c.y);});});
+  // ★ と あ
+  let st='';for(let k=0;k<10;k++){const r=k%2?7:17,a=Math.PI*k/5;st+=(p.star.x+r*Math.sin(a)).toFixed(1)+','+(p.star.y-r*Math.cos(a)).toFixed(1)+' ';}
+  h+='<polygon points="'+st+'" fill="#111" stroke="#fff" stroke-width="2"/>';
+  h+='<circle cx="'+p.goal.x+'" cy="'+p.goal.y+'" r="16" fill="#fff" stroke="#111" stroke-width="2.5"/><text x="'+p.goal.x+'" y="'+(p.goal.y+6)+'" font-size="17" font-weight="700" text-anchor="middle">あ</text>';
+  h+=northMark(752,96);
+  // はんれい
+  const y0=PH;let lg='';
+  ICONS.forEach((ic,k)=>{const x=40+(k%3)*250,y=y0+30+Math.floor(k/3)*36;lg+=iconSvg(ic[1],x,y)+svgT(ic[0],x+20,y+5,{size:14,halo:false});});
+  const yy=y0+106;
+  lg+=svgT('Aコース',30,yy+5,{size:14,bold:true,halo:false})+'<line x1="92" y1="'+yy+'" x2="140" y2="'+yy+'" stroke="#111" stroke-width="2.8"/>'+arrowHead(148,yy,[1,0],8)+'<rect x="164" y="'+(yy-10)+'" width="20" height="20" fill="#fff" stroke="#111" stroke-width="2"/>'+svgT('の{数字|すうじ}（分）',190,yy+5,{size:14,halo:false});
+  lg+=svgT('Bコース',410,yy+5,{size:14,bold:true,halo:false})+'<line x1="472" y1="'+yy+'" x2="520" y2="'+yy+'" stroke="#111" stroke-width="2.8" stroke-dasharray="8 6"/>'+arrowHead(528,yy,[1,0],8)+'<circle cx="554" cy="'+yy+'" r="11" fill="#fff" stroke="#111" stroke-width="2"/>'+svgT('の{数字|すうじ}（分）',570,yy+5,{size:14,halo:false});
+  return {inner:h+lg,W:800,H:PH+128};
+}
+
+/* ================= 1回ぶんの問題を作る ================= */
+const GENRES=[
+  {id:'bus',name:'バス',sub:'バス{停|てい}と{進|すす}む{向|む}き'},
+  {id:'board',name:'あんない{板|ばん}',sub:'バスの{時間|じかん}と{行|い}き{方|かた}'},
+  {id:'route',name:'{道|みち}じゅん',sub:'{歩|ある}いた{道|みち}をさがす'},
+  {id:'train',name:'{電車|でんしゃ}',sub:'{記号|きごう}と{乗|の}りかえ'},
+  {id:'park',name:'{公園|こうえん}',sub:'マークとコース'}
+];
+function buildSession(genre,level){
+  for(let tr=0;tr<400;tr++){
+    let m,qs,rd;
+    if(genre==='bus'){m=genBus(level,false);if(!m)continue;qs=[qNearestStop(m),qDir(m.fac,m.fac,level>=2),qAhead(m,level),qLR(m)];rd=renderTown(m);}
+    else if(genre==='board'){m=genBus(level,true);if(!m)continue;qs=[qDir(m.fac,m.fac,true),qTime(m,level),level===1?qNearestStop(m):qAhead(m,level),qCloze(m,level)];rd=renderTown(m);}
+    else if(genre==='route'){m=genRoute(level);if(!m)continue;qs=[qCount(m,level),qShelter(m),qDir([m.dest].concat(m.fac),m.fac,level>=2),qRoute(m)];rd=renderTown(m);}
+    else if(genre==='train'){m=genTrain(level);if(!m)continue;qs=[qDir(m.uniq,m.uniq,level>=2),qNearStation(m,level),qStatement(statementsTrain(m),level,T.chizu+'と{記号|きごう}の{表|ひょう}'),qTrainCompare(m)];rd=renderTown(m);}
+    else{m=genPark(level);if(!m)continue;qs=[qParkDir(m,level),qParkCount(m),level===1?qParkSum(m):qParkStatement(m),qParkCompare(m,level)];rd=renderPark(m);}
+    if(qs.some(q=>!q))continue;
+    return {genre:genre,map:m,qs:qs,render:rd};
+  }
+  return null;
+}
+
+/* ================= 画面 ================= */
+const S={level:2,sound:true};
+try{const sv=JSON.parse(localStorage.getItem('chizuYomi2')||'null');if(sv){if([1,2,3].indexOf(sv.level)>=0)S.level=sv.level;if(typeof sv.sound==='boolean')S.sound=sv.sound;}}catch(e){}
+function save(){try{localStorage.setItem('chizuYomi2',JSON.stringify(S));}catch(e){}}
+let AC=null;
+function unlock(){try{if(!AC){const C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C();}if(AC&&AC.state==='suspended')AC.resume();}catch(e){}}
+function tone(f,t0,d){try{const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=f;const t=AC.currentTime+t0;
+  g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(0.11,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+0.02);}catch(e){}}
+function sfx(ok){if(!S.sound||!AC)return;if(ok){tone(660,0,0.18);tone(880,0.14,0.28);}else{tone(392,0,0.3);}}
+function show(id){document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('on',e.id===id));}
+
+let cur=null;
+const GEAR='<svg viewBox="0 0 24 24" fill="none" stroke="#3b4a5a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>';
+function renderStart(){
+  let h='<h1>'+rb('{地図|ちず}の{読|よ}み{取|と}り')+'</h1><div class="lead">'+rb('やりたい ジャンルを えらんでね。おすと はじまるよ。')+'</div><div class="genres">';
+  GENRES.forEach(g=>{h+='<button class="gbtn" data-g="'+g.id+'">'+rb(g.name)+'<small>'+rb(g.sub)+'</small></button>';});
+  h+='<button class="gbtn any" data-g="any">おまかせ<small>'+rb('どれが{出|で}るかな')+'</small></button></div>';
+  h+='<div class="startfoot"><span>レベル '+S.level+'</span><button class="gear" id="gearBtn" aria-label="設定">'+GEAR+'</button></div>';
+  $('#startInner').innerHTML=h;
+  document.querySelectorAll('.gbtn').forEach(b=>b.addEventListener('click',()=>{unlock();startGame(b.dataset.g);}));
+  $('#gearBtn').addEventListener('click',openSettings);
+}
+function openSettings(){
+  const draw=()=>{
+    let h='<h2>設定</h2><div class="row"><div class="lab">レベル</div><div class="seg">';
+    [1,2,3].forEach(v=>{h+='<button data-lv="'+v+'" class="'+(S.level===v?'sel':'')+'">'+v+'</button>';});
+    h+='</div><div class="hint">1：やさしい（4方位・短い道のり）　2：ふつう（8方位）　3：むずかしい（施設やバス停が多い・条件が増える）</div></div>';
+    h+='<div class="row"><div class="lab">効果音</div><div class="seg"><button data-sd="1" class="'+(S.sound?'sel':'')+'">ON</button><button data-sd="0" class="'+(!S.sound?'sel':'')+'">OFF</button></div></div>';
+    h+='<div class="hint">1回の練習は、1枚の地図で4問です。</div><button class="go" id="closeSet">とじる</button>';
+    $('#modalBox').innerHTML=h;
+    document.querySelectorAll('[data-lv]').forEach(b=>b.addEventListener('click',()=>{S.level=+b.dataset.lv;save();draw();}));
+    document.querySelectorAll('[data-sd]').forEach(b=>b.addEventListener('click',()=>{unlock();S.sound=b.dataset.sd==='1';save();draw();}));
+    $('#closeSet').addEventListener('click',()=>{$('#modal').classList.remove('on');renderStart();});
+  };
+  draw();$('#modal').classList.add('on');
+}
+function startGame(g){
+  const gid=g==='any'?pick(GENRES).id:g;
+  const ses=buildSession(gid,S.level);if(!ses)return;
+  cur={ses:ses,idx:0,res:[],choice:g};
+  const r=ses.render;
+  $('#mapWrap').innerHTML='<svg viewBox="-6 -6 '+(r.W+12)+' '+(r.H+12)+'" preserveAspectRatio="xMidYMid meet" font-family="\'BIZ UDPGothic\',\'Hiragino Kaku Gothic ProN\',\'Noto Sans CJK JP\',sans-serif">'+r.inner+'<g id="ov"></g></svg>';
+  $('#barTtl').innerHTML=rb(GENRES.find(x=>x.id===gid).name);
+  $('#quit').innerHTML='やめる';
+  show('play');renderQ();
+}
+function renderQ(){
+  const q=cur.ses.qs[cur.idx],n=cur.ses.qs.length;
+  $('#prog').textContent=(cur.idx+1)+' / '+n;$('#ov').innerHTML='';
+  let h='<span class="qno">'+rb('もんだい '+(cur.idx+1))+'</span>';
+  if(q.story)h+='<div class="story">'+rb(q.story)+'</div>';
+  h+='<div class="qtext">'+rb(q.text)+'</div>';
+  const numUI=()=>'<div class="numrow">'+(q.numLabel?'<span class="unit">'+rb(q.numLabel)+'</span>':'')+'<button class="step" data-d="-1" aria-label="へらす">▽</button><input id="numIn" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"><span class="unit">'+rb(q.unit)+'</span><button class="step" data-d="1" aria-label="ふやす">△</button></div>';
+  if(q.type==='choice'){h+='<div class="choices'+(q.two?' two':'')+'">';q.choices.forEach((c,k)=>{h+='<button class="cbtn'+(q.center?' center':'')+'" data-k="'+k+'">'+wrapC(c)+'</button>';});h+='</div>';}
+  else if(q.type==='number'){h+=numUI()+'<button class="go" id="goBtn" disabled>'+rb('これで{答|こた}える')+'</button>';}
+  else if(q.type==='combo'){h+='<div class="choices two">';q.opts.forEach((c,k)=>{h+='<button class="cbtn center" data-s="'+k+'"><span>'+rb(c)+'</span></button>';});h+='</div>'+numUI()+'<button class="go" id="goBtn" disabled>'+rb('これで{答|こた}える')+'</button>';}
+  else if(q.type==='cloze'){h+='<div class="cloze story">';let bi=0;q.parts.forEach(p=>{if(p.t!==undefined)h+=rb(p.t);else{h+='<span class="pair" data-b="'+bi+'">'+p.opts.map((o,k)=>'<button data-o="'+k+'">'+rb(o)+'</button>').join('')+'</span>';bi++;}});
+    h+='</div><button class="go" id="goBtn" disabled>'+rb('これで{答|こた}える')+'</button>';}
+  h+='<div id="fb"></div>';
+  const P=$('#panel');P.innerHTML=h;P.scrollTop=0;
+  let done=false,sel=-1;const blanks=q.type==='cloze'?q.parts.filter(p=>p.opts):[];const csel=blanks.map(()=>-1);
+  const numIn=$('#numIn'),go=$('#goBtn');
+  const ready=()=>{if(!go)return;let ok=true;if(numIn)ok=/^\d+$/.test(numIn.value.trim());if(q.type==='combo')ok=ok&&sel>=0;if(q.type==='cloze')ok=csel.every(v=>v>=0);go.disabled=!ok||done;};
+  if(numIn){numIn.addEventListener('input',()=>{numIn.value=numIn.value.replace(/[^0-9]/g,'');ready();});
+    P.querySelectorAll('.step').forEach(b=>b.addEventListener('click',()=>{if(done)return;unlock();let v=parseInt(numIn.value,10);if(isNaN(v))v=0;v=Math.max(0,Math.min(999,v+(+b.dataset.d)));numIn.value=v;ready();}));}
+  const finish=(ok,ansText)=>{
+    done=true;sfx(ok);cur.res.push(ok);if(go)go.disabled=true;if(numIn)numIn.disabled=true;
+    $('#ov').innerHTML=q.overlay||'';
+    const last=cur.idx===cur.ses.qs.length-1;
+    $('#fb').innerHTML='<div class="fb '+(ok?'ok':'ng')+'"><div class="head">'+(ok?'○ せいかい！':'△ おしい！')+'</div>'+(ok?'':'<div class="ans">'+rb('{答|こた}えは「'+ansText+'」だよ。')+'</div>')+'<div>'+rb(q.explain)+'</div></div><button class="go" id="nextBtn">'+rb(last?'けっかを{見|み}る':'つぎへ')+'</button>';
+    $('#nextBtn').addEventListener('click',()=>{if(last)renderResult();else{cur.idx++;renderQ();}});
+    setTimeout(()=>{try{$('#nextBtn').scrollIntoView({block:'nearest',behavior:'smooth'});}catch(e){}},60);
+  };
+  if(q.type==='choice'){P.querySelectorAll('.cbtn').forEach(b=>b.addEventListener('click',()=>{if(done)return;unlock();const k=+b.dataset.k;
+    P.querySelectorAll('.cbtn').forEach(x=>{x.disabled=true;const kk=+x.dataset.k;if(kk===q.answer)x.classList.add('ok');else if(kk===k)x.classList.add('ng');});
+    finish(k===q.answer,plainHtml(q.choices[q.answer]));}));}
+  if(q.type==='combo'){P.querySelectorAll('[data-s]').forEach(b=>b.addEventListener('click',()=>{if(done)return;unlock();sel=+b.dataset.s;P.querySelectorAll('[data-s]').forEach(x=>x.classList.toggle('sel',x===b));ready();}));}
+  if(q.type==='cloze'){P.querySelectorAll('.pair').forEach(sp=>{const bi=+sp.dataset.b;sp.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{if(done)return;unlock();csel[bi]=+b.dataset.o;sp.querySelectorAll('button').forEach(x=>x.classList.toggle('sel',x===b));ready();}));});}
+  if(go)go.addEventListener('click',()=>{if(done)return;unlock();
+    if(q.type==='number'){const v=parseInt(numIn.value,10);finish(v===q.answer,q.answer+q.unit);}
+    else if(q.type==='combo'){const v=parseInt(numIn.value,10);
+      P.querySelectorAll('[data-s]').forEach(x=>{x.disabled=true;const kk=+x.dataset.s;x.classList.remove('sel');if(kk===q.sel)x.classList.add('ok');else if(kk===sel)x.classList.add('ng');});
+      finish(sel===q.sel&&v===q.answer,q.ansText);}
+    else{let ok=true;P.querySelectorAll('.pair').forEach(sp=>{const bi=+sp.dataset.b,bl=blanks[bi];if(csel[bi]!==bl.ans)ok=false;
+        sp.querySelectorAll('button').forEach(x=>{x.disabled=true;const kk=+x.dataset.o;x.classList.remove('sel');if(kk===bl.ans)x.classList.add('ok');else if(kk===csel[bi])x.classList.add('ng');});});
+      finish(ok,blanks.map(b=>b.opts[b.ans].replace(/[「」]/g,'')).join('・'));}
+  });
+}
+function wrapC(c){const m=c.match(/^(<svg[\s\S]*?<\/svg>)([\s\S]*)$/);return m?m[1]+'<span>'+rb(m[2])+'</span>':'<span>'+rb(c)+'</span>';}
+function plainHtml(s){return s.replace(/<svg[\s\S]*?<\/svg>/g,'');}
+function renderResult(){
+  const n=cur.res.length,c=cur.res.filter(x=>x).length;
+  let h='<div class="score">'+rb(n+'もん{中|ちゅう} '+c+'もん せいかい')+'</div><div class="lead">'+rb(c===n?'ぜんぶ できたね。すごい！':c>=n/2?'よく がんばったね。':'さいごまで よく がんばったね。もう1{回|かい} やってみよう。')+'</div><ul class="rlist">';
+  cur.res.forEach((r,k)=>{h+='<li><b>'+rb('もんだい '+(k+1))+'</b>'+(r?'○ せいかい':'△ おしい')+'</li>';});
+  h+='</ul><div class="rbtns"><button class="b1" id="again">'+rb('あたらしい{地図|ちず}で もう1{回|かい}')+'</button><button class="b2" id="home">'+rb('さいしょの{画面|がめん}に もどる')+'</button></div>';
+  $('#resultInner').innerHTML=h;show('result');
+  $('#again').addEventListener('click',()=>{unlock();startGame(cur.choice);});
+  $('#home').addEventListener('click',()=>{renderStart();show('start');});
+}
+$('#quit').addEventListener('click',()=>{renderStart();show('start');});
+
+/* ---- iPad むけ：ズームやバウンスをふせぐ ---- */
+document.addEventListener('gesturestart',e=>e.preventDefault());
+let lastTouch=0;
+document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastTouch<300&&!e.target.closest('button,input,a')){e.preventDefault();}lastTouch=now;},{passive:false});
+document.addEventListener('touchmove',e=>{if(e.touches.length>1||!e.target.closest('.scroll'))e.preventDefault();},{passive:false});
+renderStart();
+</script>
+</body>
+</html>
