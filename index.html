@@ -32,6 +32,9 @@ h1{font-size:clamp(28px,5vw,44px);margin:8px 0 6px;color:#1f5fa8;line-height:1.9
 .gbtn:active{background:#dcecfb}
 .gbtn.any{border-color:#f08c00;background:#fff8e6}
 .startfoot{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:16px;font-size:18px}
+.pmode{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 14px;background:#fff8e6;border:2.5px solid #f08c00;border-radius:12px;padding:8px 12px;margin:0 0 10px;font-size:17px;line-height:1.7;text-align:left}
+.pmode b{color:#b45309}
+.pmode button{min-height:44px;border-radius:10px;border:2.5px solid #f08c00;background:#fff;font-size:16px;font-weight:700;padding:0 12px;line-height:1.8}
 .gear{width:52px;height:52px;border-radius:50%;border:2px solid #7a8ea3;background:#fff;display:flex;align-items:center;justify-content:center;padding:0}
 .gear svg{width:30px;height:30px}
 
@@ -93,7 +96,7 @@ h1{font-size:clamp(28px,5vw,44px);margin:8px 0 6px;color:#1f5fa8;line-height:1.9
 /* 設定 */
 #modal{display:none;position:fixed;inset:0;background:rgba(20,40,60,.45);align-items:center;justify-content:center;padding:14px;z-index:10}
 #modal.on{display:flex}
-.box{background:#fff;border-radius:16px;padding:16px 18px;width:100%;max-width:460px;font-size:18px}
+.box{max-height:100%;overflow-y:auto;background:#fff;border-radius:16px;padding:16px 18px;width:100%;max-width:460px;font-size:18px}
 .box h2{margin:0 0 6px;font-size:22px;color:#1f5fa8}
 .row{margin:10px 0}
 .row .lab{font-weight:700;margin-bottom:4px}
@@ -103,7 +106,6 @@ h1{font-size:clamp(28px,5vw,44px);margin:8px 0 6px;color:#1f5fa8;line-height:1.9
 .hint{font-size:14px;color:#49627c;line-height:1.6;margin-top:4px}
 
 /* A4プリント */
-.pbtn{min-height:52px;border-radius:26px;border:2px solid #7a8ea3;background:#fff;font-size:18px;font-weight:700;padding:0 18px;line-height:1.8}
 #pTop{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:6px 10px;background:#2f7dd1;color:#fff}
 #pTop .ttl{flex:1;font-weight:700;font-size:18px;line-height:1.8}
 #pTop button{min-width:76px;min-height:44px;border-radius:10px;border:2px solid #fff;background:transparent;color:#fff;font-size:16px;line-height:1.8}
@@ -156,14 +158,14 @@ h1{font-size:clamp(28px,5vw,44px);margin:8px 0 6px;color:#1f5fa8;line-height:1.9
 <div id="result" class="screen scroll"><div class="inner" id="resultInner"></div></div>
 
 <div id="printScr" class="screen">
-  <div id="pTop"><div class="ttl">A4プリント</div><button id="pBack">もどる</button></div>
+  <div id="pTop"><div class="ttl" id="pTtl">A4プリント</div><button id="pBack">もどる</button></div>
   <div id="pScroll" class="scroll">
     <div class="ptools" id="pTools"></div>
     <div class="pview"><div class="pwrap" id="pWrap"><div class="pinner" id="pInner"></div></div></div>
   </div>
 </div>
 
-<div id="modal"><div class="box" id="modalBox"></div></div>
+<div id="modal"><div class="box scroll" id="modalBox"></div></div>
 
 <script>
 'use strict';
@@ -858,13 +860,17 @@ function show(id){document.querySelectorAll('.screen').forEach(e=>e.classList.to
 let cur=null;
 const GEAR='<svg viewBox="0 0 24 24" fill="none" stroke="#3b4a5a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>';
 function renderStart(){
-  let h='<h1>'+rb('{地図|ちず}の{読|よ}み{取|と}り')+'</h1><div class="lead">'+rb('やりたい ジャンルを えらんでね。おすと はじまるよ。')+'</div><div class="genres">';
+  const pm=PR.mode==='print';
+  let h='<h1>'+rb('{地図|ちず}の{読|よ}み{取|と}り')+'</h1>';
+  if(pm)h+='<div class="pmode"><span><b>プリントをつくるモード</b>　ジャンルをおすと、プリントの画面が開きます。</span><button id="toPractice">れんしゅうにもどす</button></div>';
+  h+='<div class="lead">'+rb(pm?'プリントにする ジャンルを えらんでね。':'やりたい ジャンルを えらんでね。おすと はじまるよ。')+'</div><div class="genres">';
   GENRES.forEach(g=>{h+='<button class="gbtn" data-g="'+g.id+'">'+rb(g.name)+'<small>'+rb(g.sub)+'</small></button>';});
   h+='<button class="gbtn any" data-g="any">おまかせ<small>'+rb('どれが{出|で}るかな')+'</small></button></div>';
-  h+='<div class="startfoot"><span>レベル '+S.level+'</span><button class="pbtn" id="printBtn">A4プリント</button><button class="gear" id="gearBtn" aria-label="設定">'+GEAR+'</button></div>';
+  h+='<div class="startfoot"><button class="gear" id="gearBtn" aria-label="設定">'+GEAR+'</button></div>';
   $('#startInner').innerHTML=h;
-  document.querySelectorAll('.gbtn').forEach(b=>b.addEventListener('click',()=>{unlock();startGame(b.dataset.g);}));
-  $('#printBtn').addEventListener('click',openPrint);
+  document.querySelectorAll('.gbtn').forEach(b=>b.addEventListener('click',()=>{unlock();
+    if(PR.mode==='print')openPrint(b.dataset.g==='any'?pick(GENRES).id:b.dataset.g);else startGame(b.dataset.g);}));
+  if(pm)$('#toPractice').addEventListener('click',()=>{PR.mode='practice';renderStart();});
   $('#gearBtn').addEventListener('click',openSettings);
 }
 function openSettings(){
@@ -872,10 +878,13 @@ function openSettings(){
     let h='<h2>設定</h2><div class="row"><div class="lab">レベル</div><div class="seg">';
     [1,2,3].forEach(v=>{h+='<button data-lv="'+v+'" class="'+(S.level===v?'sel':'')+'">'+v+'</button>';});
     h+='</div><div class="hint">1：やさしい（4方位・短い道のり）　2：ふつう（8方位）　3：むずかしい（施設やバス停が多い・条件が増える）</div></div>';
+    h+='<div class="row"><div class="lab">つかいかた</div><div class="seg"><button data-md="practice" class="'+(PR.mode!=='print'?'sel':'')+'">れんしゅう</button><button data-md="print" class="'+(PR.mode==='print'?'sel':'')+'">プリント</button></div>';
+    h+='<div class="hint">「プリント」にすると、ジャンルをおしたときにA4プリントの画面が開きます。アプリを開き直すと「れんしゅう」にもどります。</div></div>';
     h+='<div class="row"><div class="lab">効果音</div><div class="seg"><button data-sd="1" class="'+(S.sound?'sel':'')+'">ON</button><button data-sd="0" class="'+(!S.sound?'sel':'')+'">OFF</button></div></div>';
-    h+='<div class="hint">1回の練習は、1枚の地図で4問です。</div><button class="go" id="closeSet">とじる</button>';
+    h+='<div class="hint">1回の練習・プリントは、1枚の地図で4問です。</div><button class="go" id="closeSet">とじる</button>';
     $('#modalBox').innerHTML=h;
     document.querySelectorAll('[data-lv]').forEach(b=>b.addEventListener('click',()=>{S.level=+b.dataset.lv;save();draw();}));
+    document.querySelectorAll('[data-md]').forEach(b=>b.addEventListener('click',()=>{PR.mode=b.dataset.md;draw();}));
     document.querySelectorAll('[data-sd]').forEach(b=>b.addEventListener('click',()=>{unlock();S.sound=b.dataset.sd==='1';save();draw();}));
     $('#closeSet').addEventListener('click',()=>{$('#modal').classList.remove('on');renderStart();});
   };
@@ -982,7 +991,7 @@ const DL_CSS=
 '@media print{body{background:#fff}.pbar{display:none}.sheet{margin:0;padding:0;min-height:0;box-shadow:none}.sheet.ans{break-before:page;page-break-before:always}}';
 (function(){const st=document.createElement('style');st.textContent=SHEET_CSS;document.head.appendChild(st);})();
 
-const PR={genre:'bus',ans:false,ses:null,over:false};
+const PR={mode:'practice',genre:'bus',ans:false,ses:null,over:false};
 const KANA=['ア','イ','ウ','エ'];
 let mmK=0;
 function mm(v){if(!mmK){const d=document.createElement('div');d.id='mmProbe';document.body.appendChild(d);mmK=d.getBoundingClientRect().width/100||3.7795;d.remove();}return v*mmK;}
@@ -1050,16 +1059,10 @@ function scalePrev(){
 function refit(){fitSheet();scalePrev();}
 function pMsg(t,ok){const m=$('#pMsg');if(!m)return;m.textContent=t;m.className=t?(ok?'ok':'ng'):'';}
 function drawTools(){
-  let h='<div class="prow"><span class="lab">ジャンル</span><div class="pseg">';
-  GENRES.forEach(g=>{h+='<button data-pg="'+g.id+'" class="'+(PR.genre===g.id?'sel':'')+'">'+rb(g.name)+'</button>';});
-  h+='</div></div><div class="prow"><span class="lab">レベル</span><div class="pseg">';
-  [1,2,3].forEach(v=>{h+='<button data-plv="'+v+'" class="'+(S.level===v?'sel':'')+'">'+v+'</button>';});
-  h+='</div></div><div class="prow"><span class="lab">答えのページ</span><div class="pseg"><button data-pa="1" class="'+(PR.ans?'sel':'')+'">つける</button><button data-pa="0" class="'+(!PR.ans?'sel':'')+'">つけない</button></div></div>';
+  let h='<div class="prow"><span class="lab">答えのページ</span><div class="pseg"><button data-pa="1" class="'+(PR.ans?'sel':'')+'">つける</button><button data-pa="0" class="'+(!PR.ans?'sel':'')+'">つけない</button></div></div>';
   h+='<div class="prow pact"><button class="main" id="pNew">あたらしい地図にする</button><button class="sub" id="pPrint">このまま印刷</button><button class="sub" id="pDl">HTMLをダウンロード</button><button class="sub" id="pCopy">HTMLをコピーする</button></div>';
   h+='<div class="phint">問題の文・選択肢・答えの説明は、タップすると書きかえられます。<br>「このまま印刷」で印刷できないときは、「HTMLをダウンロード」で保存したファイルをブラウザで開くと、印刷ボタンで印刷できます。</div><div id="pMsg"></div>';
   $('#pTools').innerHTML=h;
-  document.querySelectorAll('[data-pg]').forEach(b=>b.addEventListener('click',()=>{PR.genre=b.dataset.pg;drawTools();buildPrint();}));
-  document.querySelectorAll('[data-plv]').forEach(b=>b.addEventListener('click',()=>{S.level=+b.dataset.plv;save();drawTools();buildPrint();}));
   document.querySelectorAll('[data-pa]').forEach(b=>b.addEventListener('click',()=>{PR.ans=b.dataset.pa==='1';
     document.querySelectorAll('[data-pa]').forEach(x=>x.classList.toggle('sel',x===b));const a=$('#sheetA');if(a)a.classList.toggle('off',!PR.ans);scalePrev();}));
   $('#pNew').addEventListener('click',()=>{pMsg('');buildPrint();});
@@ -1090,7 +1093,7 @@ function copyPrint(){
   ta.remove();
   pMsg(ok?'HTMLをコピーしました。テキストエディタにはりつけて .html で保存すると、ブラウザで開いて印刷できます。':'コピーできませんでした。「HTMLをダウンロード」をためしてください。',ok);
 }
-function openPrint(){show('printScr');drawTools();buildPrint();$('#pScroll').scrollTop=0;}
+function openPrint(g){if(g)PR.genre=g;$('#pTtl').innerHTML=rb('A4プリント（'+GENRES.find(x=>x.id===PR.genre).name+'・レベル'+S.level+'）');show('printScr');drawTools();buildPrint();$('#pScroll').scrollTop=0;}
 $('#pBack').addEventListener('click',()=>{renderStart();show('start');});
 let fitT=0;
 $('#pInner').addEventListener('input',()=>{clearTimeout(fitT);fitT=setTimeout(refit,300);});
