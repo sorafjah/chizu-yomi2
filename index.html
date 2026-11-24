@@ -858,7 +858,7 @@ function sfx(ok){if(!S.sound||!AC)return;if(ok){tone(660,0,0.18);tone(880,0.14,0
 function show(id){document.querySelectorAll('.screen').forEach(e=>e.classList.toggle('on',e.id===id));}
 
 let cur=null;
-const GEAR='<svg viewBox="0 0 24 24" fill="none" stroke="#3b4a5a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>';
+const GEAR='<svg viewBox="0 0 24 24" fill="#3b4a5a" fill-rule="evenodd" stroke="#3b4a5a" stroke-width="1" stroke-linejoin="round"><path d="M10.52 4.55 L10.85 1.56 L13.15 1.56 L13.48 4.55 L16.22 5.68 L18.57 3.81 L20.19 5.43 L18.32 7.78 L19.45 10.52 L22.44 10.85 L22.44 13.15 L19.45 13.48 L18.32 16.22 L20.19 18.57 L18.57 20.19 L16.22 18.32 L13.48 19.45 L13.15 22.44 L10.85 22.44 L10.52 19.45 L7.78 18.32 L5.43 20.19 L3.81 18.57 L5.68 16.22 L4.55 13.48 L1.56 13.15 L1.56 10.85 L4.55 10.52 L5.68 7.78 L3.81 5.43 L5.43 3.81 L7.78 5.68Z M12 8.6a3.4 3.4 0 1 0 0 6.8a3.4 3.4 0 1 0 0-6.8Z"/></svg>';
 function renderStart(){
   const pm=PR.mode==='print';
   let h='<h1>'+rb('{地図|ちず}の{読|よ}み{取|と}り')+'</h1>';
