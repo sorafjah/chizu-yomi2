@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <title>地図の読み取り</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -99,6 +101,44 @@ h1{font-size:clamp(28px,5vw,44px);margin:8px 0 6px;color:#1f5fa8;line-height:1.9
 .seg button{flex:1;min-height:48px;border:2.5px solid #2f7dd1;border-radius:10px;background:#fff;font-size:18px}
 .seg button.sel{background:#2f7dd1;color:#fff}
 .hint{font-size:14px;color:#49627c;line-height:1.6;margin-top:4px}
+
+/* A4プリント */
+.pbtn{min-height:52px;border-radius:26px;border:2px solid #7a8ea3;background:#fff;font-size:18px;font-weight:700;padding:0 18px;line-height:1.8}
+#pTop{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:6px 10px;background:#2f7dd1;color:#fff}
+#pTop .ttl{flex:1;font-weight:700;font-size:18px;line-height:1.8}
+#pTop button{min-width:76px;min-height:44px;border-radius:10px;border:2px solid #fff;background:transparent;color:#fff;font-size:16px;line-height:1.8}
+#pScroll{flex:1;min-height:0}
+.ptools{background:#fff;padding:8px 12px;border-bottom:2px solid #c8d8e8;display:grid;gap:8px}
+.prow{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.prow .lab{font-weight:700;min-width:7.5em;font-size:16px}
+.pseg{display:flex;flex-wrap:wrap;gap:6px}
+.pseg button{min-height:44px;min-width:56px;border:2.5px solid #2f7dd1;border-radius:10px;background:#fff;font-size:16px;padding:0 10px;line-height:1.8}
+.pseg button.sel{background:#2f7dd1;color:#fff}
+.pact button{min-height:48px;border-radius:10px;font-size:17px;font-weight:700;padding:0 14px;line-height:1.8}
+.pact .main{background:#f08c00;color:#fff;border:none}
+.pact .sub{background:#fff;border:2.5px solid #2f7dd1}
+.phint{font-size:14px;color:#49627c;line-height:1.7}
+#pMsg{font-size:15px;font-weight:700;line-height:1.7;min-height:1em}
+#pMsg.ok{color:#2b8a3e}#pMsg.ng{color:#c2410c}
+.pview{padding:12px 8px 24px;display:flex;justify-content:center}
+.pwrap{overflow:hidden}
+.pinner{width:210mm;transform-origin:0 0}
+#pInner .sheet{padding:5mm 5mm 5mm 15mm;min-height:287mm;box-shadow:0 1px 8px rgba(0,0,0,.25);margin:0 0 8mm}
+#pInner .sheet.off{display:none}
+#pInner [contenteditable]:focus{background:#fff3c4}
+#mmProbe{position:absolute;left:-9999px;top:0;width:100mm;height:1px}
+@page{size:A4 portrait;margin:5mm 5mm 5mm 15mm}
+@media print{
+  html,body{height:auto!important;overflow:visible!important;background:#fff!important}
+  #start,#play,#result,#modal,#pTop,.ptools{display:none!important}
+  #printScr{display:block!important;position:static!important}
+  #pScroll{overflow:visible!important}
+  .pview{padding:0!important;display:block!important}
+  .pwrap{width:auto!important;height:auto!important;overflow:visible!important}
+  .pinner{transform:none!important;width:auto!important}
+  #pInner .sheet{margin:0!important;padding:0!important;min-height:0!important;box-shadow:none!important}
+  #pInner .sheet.ans{break-before:page;page-break-before:always}
+}
 </style>
 </head>
 <body>
@@ -114,6 +154,14 @@ h1{font-size:clamp(28px,5vw,44px);margin:8px 0 6px;color:#1f5fa8;line-height:1.9
 </div>
 
 <div id="result" class="screen scroll"><div class="inner" id="resultInner"></div></div>
+
+<div id="printScr" class="screen">
+  <div id="pTop"><div class="ttl">A4プリント</div><button id="pBack">もどる</button></div>
+  <div id="pScroll" class="scroll">
+    <div class="ptools" id="pTools"></div>
+    <div class="pview"><div class="pwrap" id="pWrap"><div class="pinner" id="pInner"></div></div></div>
+  </div>
+</div>
 
 <div id="modal"><div class="box" id="modalBox"></div></div>
 
@@ -813,9 +861,10 @@ function renderStart(){
   let h='<h1>'+rb('{地図|ちず}の{読|よ}み{取|と}り')+'</h1><div class="lead">'+rb('やりたい ジャンルを えらんでね。おすと はじまるよ。')+'</div><div class="genres">';
   GENRES.forEach(g=>{h+='<button class="gbtn" data-g="'+g.id+'">'+rb(g.name)+'<small>'+rb(g.sub)+'</small></button>';});
   h+='<button class="gbtn any" data-g="any">おまかせ<small>'+rb('どれが{出|で}るかな')+'</small></button></div>';
-  h+='<div class="startfoot"><span>レベル '+S.level+'</span><button class="gear" id="gearBtn" aria-label="設定">'+GEAR+'</button></div>';
+  h+='<div class="startfoot"><span>レベル '+S.level+'</span><button class="pbtn" id="printBtn">A4プリント</button><button class="gear" id="gearBtn" aria-label="設定">'+GEAR+'</button></div>';
   $('#startInner').innerHTML=h;
   document.querySelectorAll('.gbtn').forEach(b=>b.addEventListener('click',()=>{unlock();startGame(b.dataset.g);}));
+  $('#printBtn').addEventListener('click',openPrint);
   $('#gearBtn').addEventListener('click',openSettings);
 }
 function openSettings(){
@@ -897,10 +946,160 @@ function renderResult(){
 }
 $('#quit').addEventListener('click',()=>{renderStart();show('start');});
 
+/* ================= A4プリント ================= */
+const FONT_STACK='"BIZ UDPGothic","Hiragino Kaku Gothic ProN","Noto Sans CJK JP",sans-serif';
+const SHEET_CSS=
+'.sheet{box-sizing:content-box;width:190mm;color:#000;background:#fff;font-size:12pt;line-height:2;font-family:'+FONT_STACK+';-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+'.sheet rt{font-size:.5em;font-weight:400}'+
+'.sheet [contenteditable]{outline:none;-webkit-user-select:text;user-select:text}'+
+'.ph{display:flex;justify-content:space-between;align-items:flex-end;gap:4mm;border-bottom:1.5px solid #000;padding-bottom:.5mm;margin-bottom:1.5mm}'+
+'.pttl{font-size:14pt;font-weight:700}'+
+'.pname{white-space:nowrap}'+
+'.pmap{text-align:center;margin:1mm 0 2mm}'+
+'.pmap svg{display:inline-block;vertical-align:top}'+
+'.pq{margin:0 0 2mm;break-inside:avoid;page-break-inside:avoid}'+
+'.pqh{display:flex;gap:2mm}'+
+'.pno{flex:0 0 auto;width:6.5mm;height:6.5mm;border:1.5px solid #000;border-radius:50%;text-align:center;line-height:6mm;font-weight:700;font-size:11pt;margin-top:2.4mm;box-sizing:border-box}'+
+'.pqb{flex:1;min-width:0}'+
+'.pqt{font-weight:700}'+
+'.pbl{white-space:nowrap}'+
+'.pstory,.pcloze{border:1px solid #000;padding:0 2mm;margin-bottom:.5mm}'+
+'.pcloze{line-height:2.4}'+
+'.pp{white-space:nowrap}'+
+'.pch{display:grid;gap:0 4mm;margin-left:1mm}'+
+'.pch.c4{grid-template-columns:repeat(4,1fr)}.pch.c2{grid-template-columns:repeat(2,1fr)}.pch.c1{grid-template-columns:1fr}'+
+'.pc{display:flex;align-items:center;gap:1.5mm}'+
+'.pk{flex:0 0 auto;font-weight:700}'+
+'.pc svg{flex:0 0 auto}'+
+'.pa{display:flex;gap:2mm;margin-bottom:3mm}'+
+'.pat{font-weight:700}';
+const DL_CSS=
+'body{margin:0;background:#e9edf1;font-family:'+FONT_STACK+'}'+
+'.pbar{text-align:center;padding:12px}'+
+'.pbar button{min-height:52px;padding:0 28px;font-size:20px;font-weight:700;border:none;border-radius:12px;background:#f08c00;color:#fff;font-family:inherit;cursor:pointer}'+
+'.sheet{margin:0 auto 8mm;padding:5mm 5mm 5mm 15mm;min-height:287mm;box-shadow:0 1px 8px rgba(0,0,0,.25)}'+
+'@page{size:A4 portrait;margin:5mm 5mm 5mm 15mm}'+
+'@media print{body{background:#fff}.pbar{display:none}.sheet{margin:0;padding:0;min-height:0;box-shadow:none}.sheet.ans{break-before:page;page-break-before:always}}';
+(function(){const st=document.createElement('style');st.textContent=SHEET_CSS;document.head.appendChild(st);})();
+
+const PR={genre:'bus',ans:false,ses:null,over:false};
+const KANA=['ア','イ','ウ','エ'];
+let mmK=0;
+function mm(v){if(!mmK){const d=document.createElement('div');d.id='mmProbe';document.body.appendChild(d);mmK=d.getBoundingClientRect().width/100||3.7795;d.remove();}return v*mmK;}
+const ED=' contenteditable="true"';
+function pqHtml(q,n){
+  let h='<div class="pq"><div class="pqh"><span class="pno">'+n+'</span><div class="pqb">';
+  if(q.story)h+='<div class="pstory"'+ED+'>'+rb(q.story)+'</div>';
+  if(q.type==='choice'){
+    h+='<div><span class="pqt"'+ED+'>'+rb(q.text)+'</span><span class="pbl">（　　　　）</span></div>';
+    const mx=Math.max.apply(null,q.choices.map(c=>plain(plainHtml(c)).length));
+    const cols=mx<=6?4:mx<=14?2:1;
+    h+='<div class="pch c'+cols+'">'+q.choices.map((c,k)=>{const m=c.match(/^(<svg[\s\S]*?<\/svg>)([\s\S]*)$/);
+      return '<div class="pc"><span class="pk">'+KANA[k]+'</span>'+(m?m[1]+'<span'+ED+'>'+rb(m[2])+'</span>':'<span'+ED+'>'+rb(c)+'</span>')+'</div>';}).join('')+'</div>';
+  }else if(q.type==='number'){
+    h+='<div><span class="pqt"'+ED+'>'+rb(q.text)+'</span><span class="pbl">（　　　　）'+rb(q.unit)+'</span></div>';
+  }else if(q.type==='combo'){
+    h+='<div class="pqt"'+ED+'>'+rb(q.text)+'</div>';
+    h+='<div'+ED+'><span class="pp">（ '+rb(q.opts[0])+' ・ '+rb(q.opts[1])+' ）</span>'+rb('の {正|ただ}しいほうに ○を つけてね。')+'　'
+      +rb(q.numLabel||'かかる{時間|じかん}')+'<span class="pbl">（　　　　）'+rb(q.unit)+'</span></div>';
+  }else{
+    h+='<div class="pqt"'+ED+'>'+rb('{説明|せつめい}の{文|ぶん}が{正|ただ}しくなるように、（　）の{中|なか}の {正|ただ}しいほうに ○を つけてね。')+'</div>';
+    h+='<div class="pcloze"'+ED+'>'+q.parts.map(p=>p.t!==undefined?rb(p.t):'<span class="pp">（ '+rb(p.opts[0])+' ・ '+rb(p.opts[1])+' ）</span>').join('')+'</div>';
+  }
+  return h+'</div></div></div>';
+}
+function ansHtml(q){
+  if(q.type==='choice')return KANA[q.answer]+'（'+rb(plainHtml(q.choices[q.answer]))+'）';
+  if(q.type==='number')return q.answer+rb(q.unit);
+  if(q.type==='combo')return rb(q.ansText);
+  return q.parts.filter(p=>p.opts).map(p=>rb(p.opts[p.ans])).join('　・　');
+}
+function buildPrint(){
+  const ses=buildSession(PR.genre,S.level);if(!ses)return;PR.ses=ses;
+  const r=ses.render,gname=GENRES.find(x=>x.id===PR.genre).name;
+  const inner=r.inner.replace(/id="dots"/g,'id="dotsP"').replace(/url\(#dots\)/g,'url(#dotsP)');
+  let h='<div class="sheet" id="sheetQ"><div class="sbody">';
+  h+='<div class="ph"><div class="pttl"'+ED+'>'+rb('{地図|ちず}の{読|よ}み{取|と}り（'+gname+'）')+'</div><div class="pname">'+rb('{名前|なまえ}')+'（　　　　　　　　　　　　）</div></div>';
+  h+='<div'+ED+'>'+rb('{地図|ちず}を{見|み}て {答|こた}えてね。ア〜エから えらぶ{問題|もんだい}は、{記号|きごう}を（　）に{書|か}いてね。')+'</div>';
+  h+='<div class="pmap"><svg viewBox="-6 -6 '+(r.W+12)+' '+(r.H+12)+'" preserveAspectRatio="xMidYMid meet" font-family="\'BIZ UDPGothic\',\'Hiragino Kaku Gothic ProN\',\'Noto Sans CJK JP\',sans-serif">'+inner+'</svg></div>';
+  ses.qs.forEach((q,k)=>{h+=pqHtml(q,k+1);});
+  h+='</div></div>';
+  h+='<div class="sheet ans'+(PR.ans?'':' off')+'" id="sheetA"><div class="sbody"><div class="ph"><div class="pttl"'+ED+'>'+rb('{答|こた}え（'+gname+'）')+'</div></div>';
+  ses.qs.forEach((q,k)=>{h+='<div class="pa"><span class="pno">'+(k+1)+'</span><div class="pqb"'+ED+'><div class="pat">'+ansHtml(q)+'</div><div>'+rb(q.explain)+'</div></div></div>';});
+  h+='</div></div>';
+  $('#pInner').innerHTML=h;
+  refit();
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(refit);
+}
+function fitSheet(){
+  const sh=$('#sheetQ');if(!sh||!PR.ses)return;
+  const body=sh.querySelector('.sbody'),svg=sh.querySelector('.pmap svg'),r=PR.ses.render;
+  const asp=(r.H+12)/(r.W+12),lim=mm(284);
+  let hm=Math.min(172,190*asp);
+  const set=()=>{const wm=Math.min(190,hm/asp);svg.setAttribute('width',wm.toFixed(1)+'mm');svg.setAttribute('height',(wm*asp).toFixed(1)+'mm');};
+  set();
+  while(body.offsetHeight>lim&&hm>96){hm-=4;set();}
+  PR.over=body.offsetHeight>lim;
+  if(PR.over)pMsg('1枚に入りきらないかもしれません。文を短くするか、「あたらしい地図にする」をおすと入ることがあります。',false);
+}
+function scalePrev(){
+  const inner=$('#pInner'),wrap=$('#pWrap');const avail=$('#pScroll').clientWidth-16;
+  const w=inner.offsetWidth;if(!w)return;const s=Math.min(1,avail/w);
+  inner.style.transform='scale('+s+')';wrap.style.width=(w*s)+'px';wrap.style.height=(inner.offsetHeight*s)+'px';
+}
+function refit(){fitSheet();scalePrev();}
+function pMsg(t,ok){const m=$('#pMsg');if(!m)return;m.textContent=t;m.className=t?(ok?'ok':'ng'):'';}
+function drawTools(){
+  let h='<div class="prow"><span class="lab">ジャンル</span><div class="pseg">';
+  GENRES.forEach(g=>{h+='<button data-pg="'+g.id+'" class="'+(PR.genre===g.id?'sel':'')+'">'+rb(g.name)+'</button>';});
+  h+='</div></div><div class="prow"><span class="lab">レベル</span><div class="pseg">';
+  [1,2,3].forEach(v=>{h+='<button data-plv="'+v+'" class="'+(S.level===v?'sel':'')+'">'+v+'</button>';});
+  h+='</div></div><div class="prow"><span class="lab">答えのページ</span><div class="pseg"><button data-pa="1" class="'+(PR.ans?'sel':'')+'">つける</button><button data-pa="0" class="'+(!PR.ans?'sel':'')+'">つけない</button></div></div>';
+  h+='<div class="prow pact"><button class="main" id="pNew">あたらしい地図にする</button><button class="sub" id="pPrint">このまま印刷</button><button class="sub" id="pDl">HTMLをダウンロード</button><button class="sub" id="pCopy">HTMLをコピーする</button></div>';
+  h+='<div class="phint">問題の文・選択肢・答えの説明は、タップすると書きかえられます。<br>「このまま印刷」で印刷できないときは、「HTMLをダウンロード」で保存したファイルをブラウザで開くと、印刷ボタンで印刷できます。</div><div id="pMsg"></div>';
+  $('#pTools').innerHTML=h;
+  document.querySelectorAll('[data-pg]').forEach(b=>b.addEventListener('click',()=>{PR.genre=b.dataset.pg;drawTools();buildPrint();}));
+  document.querySelectorAll('[data-plv]').forEach(b=>b.addEventListener('click',()=>{S.level=+b.dataset.plv;save();drawTools();buildPrint();}));
+  document.querySelectorAll('[data-pa]').forEach(b=>b.addEventListener('click',()=>{PR.ans=b.dataset.pa==='1';
+    document.querySelectorAll('[data-pa]').forEach(x=>x.classList.toggle('sel',x===b));const a=$('#sheetA');if(a)a.classList.toggle('off',!PR.ans);scalePrev();}));
+  $('#pNew').addEventListener('click',()=>{pMsg('');buildPrint();});
+  $('#pPrint').addEventListener('click',()=>{try{window.print();}catch(e){pMsg('ここでは印刷できませんでした。「HTMLをダウンロード」をためしてください。',false);}});
+  $('#pDl').addEventListener('click',downloadPrint);
+  $('#pCopy').addEventListener('click',copyPrint);
+}
+function exportHtml(){
+  const c=$('#pInner').cloneNode(true);
+  c.querySelectorAll('.sheet.off').forEach(e=>e.remove());
+  c.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
+  return '<!DOCTYPE html>\n<html lang="ja">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>地図の読み取り プリント</title>\n'
+    +'<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">\n'
+    +'<style>'+SHEET_CSS+DL_CSS+'</style>\n</head>\n<body>\n<div class="pbar"><button onclick="window.print()">印刷する</button></div>\n'+c.innerHTML+'\n</body>\n</html>\n';
+}
+function downloadPrint(){
+  try{const url=URL.createObjectURL(new Blob([exportHtml()],{type:'text/html'}));
+    const a=document.createElement('a');a.href=url;a.download='chizu_print_'+PR.genre+'.html';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    pMsg('ダウンロードしました。ファイルをブラウザで開くと、印刷ボタンで印刷できます。',true);
+  }catch(e){pMsg('ダウンロードできませんでした。「HTMLをコピーする」をためしてください。',false);}
+}
+function copyPrint(){
+  const ta=document.createElement('textarea');ta.value=exportHtml();ta.setAttribute('readonly','');
+  ta.style.cssText='position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;-webkit-user-select:text;user-select:text';
+  document.body.appendChild(ta);let ok=false;
+  try{ta.focus();ta.select();ta.setSelectionRange(0,ta.value.length);ok=document.execCommand('copy');}catch(e){ok=false;}
+  ta.remove();
+  pMsg(ok?'HTMLをコピーしました。テキストエディタにはりつけて .html で保存すると、ブラウザで開いて印刷できます。':'コピーできませんでした。「HTMLをダウンロード」をためしてください。',ok);
+}
+function openPrint(){show('printScr');drawTools();buildPrint();$('#pScroll').scrollTop=0;}
+$('#pBack').addEventListener('click',()=>{renderStart();show('start');});
+let fitT=0;
+$('#pInner').addEventListener('input',()=>{clearTimeout(fitT);fitT=setTimeout(refit,300);});
+window.addEventListener('resize',()=>{if($('#printScr').classList.contains('on'))scalePrev();});
+
 /* ---- iPad むけ：ズームやバウンスをふせぐ ---- */
 document.addEventListener('gesturestart',e=>e.preventDefault());
 let lastTouch=0;
-document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastTouch<300&&!e.target.closest('button,input,a')){e.preventDefault();}lastTouch=now;},{passive:false});
+document.addEventListener('touchend',e=>{const now=Date.now();if(now-lastTouch<300&&!e.target.closest('button,input,a,[contenteditable]')){e.preventDefault();}lastTouch=now;},{passive:false});
 document.addEventListener('touchmove',e=>{if(e.touches.length>1||!e.target.closest('.scroll'))e.preventDefault();},{passive:false});
 renderStart();
 </script>
